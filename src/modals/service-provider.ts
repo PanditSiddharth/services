@@ -33,7 +33,7 @@ const serviceProviderSchema = new mongoose.Schema(
         profession: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Service",
-            required: [true, "Profession is required"],
+            required: [true, "Profession is required"], // electrician, plumber, etc.
         },
         services: [
             {
