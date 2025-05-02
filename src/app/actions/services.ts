@@ -4,7 +4,7 @@
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import dbConnect from "@/lib/db-connect"
-import Service from "@/modals/service"
+import Service from "@/models/service"
 
 // Zod schema for subservice validation
 const SubServiceSchema = z.object({
