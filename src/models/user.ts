@@ -1,6 +1,27 @@
-import mongoose from "mongoose";
+import mongoose, { Model } from "mongoose";
 
-const userSchema = new mongoose.Schema(
+// Define the interface for the User document
+interface IUser {
+  name?: string;
+  email?: string;
+  phone: string;
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+    landmark?: string;
+  };
+  profileImage?: string;
+  role: "user" | "admin";
+  isActive: boolean;
+  bookings: mongoose.Types.ObjectId[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Define the schema
+const userSchema = new mongoose.Schema<IUser>(
   {
     name: {
       type: String,
@@ -62,9 +83,10 @@ const userSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  },
-)
+  }
+);
 
-const User = mongoose.models.User || mongoose.model("User", userSchema)
+// Check if the model exists before creating a new one
+const User: Model<IUser> = mongoose.models?.User || mongoose.model<IUser>("User", userSchema);
 
-export default User
+export default User;

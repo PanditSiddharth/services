@@ -1,6 +1,6 @@
 "use client"
 import { format } from "date-fns"
-import { type User, getUsers } from "@/app/actions/admin"
+import { type User, getUsers } from "@/app/actions/admin0"
 import { InfiniteScrollList } from "./infinite-scroll-list"
 import { Badge } from "@/components/ui/badge"
 import { MoreHorizontal, Mail } from "lucide-react"

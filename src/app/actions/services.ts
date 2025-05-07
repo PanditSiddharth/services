@@ -179,10 +179,10 @@ export async function removeSubService(serviceId: string, subServiceId: string) 
 }
 
 // Get all services
-export async function getServices() {
+export async function getServices(projection:any = "") {
   try {
     await dbConnect()
-    const services = await Service.find().sort({ createdAt: -1 })
+    const services = await Service.find({}, projection).sort({ createdAt: -1 })
     console.log("Fetched services:", services)
     return JSON.parse(JSON.stringify(services))
   } catch (error) {

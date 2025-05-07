@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { type Service, getServices } from "@/app/actions/admin"
 import { InfiniteScrollList } from "./infinite-scroll-list"
 import { Badge } from "@/components/ui/badge"
 import { MoreHorizontal, Edit, Trash, Plus, Eye } from "lucide-react"
@@ -9,6 +8,30 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { format } from "date-fns"
+import { getServices } from "@/app/actions/admin"
+
+// Updated interface to match the MongoDB model
+interface SubService {
+  _id: string
+  name: string
+  description?: string
+  basePrice: number
+  priceUnit: "hour" | "day" | "job"
+}
+
+interface Service {
+  _id: string
+  name: string
+  slug: string
+  description: string
+  icon: string
+  image: string
+  isActive: boolean
+  subServices: SubService[]
+  providers: string[] // Array of ServiceProvider IDs
+  createdAt: string
+  updatedAt: string
+}
 
 interface ServiceListProps {
   initialServices: Service[]
@@ -16,7 +39,7 @@ interface ServiceListProps {
 }
 
 export function ServiceList({ initialServices, initialHasMore }: ServiceListProps) {
-  const [expandedService, setExpandedService] = useState<string | null>(null)
+  const [expandedServices, setExpandedServices] = useState<Set<string>>(new Set())
 
   const fetchServices = async (page: number, search: string) => {
     const { services, hasMore } = await getServices(page, 10, search)
@@ -24,7 +47,15 @@ export function ServiceList({ initialServices, initialHasMore }: ServiceListProp
   }
 
   const toggleExpand = (serviceId: string) => {
-    setExpandedService(expandedService === serviceId ? null : serviceId)
+    setExpandedServices(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(serviceId)) {
+        newSet.delete(serviceId)
+      } else {
+        newSet.add(serviceId)
+      }
+      return newSet
+    })
   }
 
   const renderService = (service: Service) => (
@@ -32,9 +63,17 @@ export function ServiceList({ initialServices, initialHasMore }: ServiceListProp
       <div className="p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium">
-              {service.name.charAt(0)}
-            </div>
+            {service.image !== "/placeholder.svg" ? (
+              <img 
+                src={service.image} 
+                alt={service.name} 
+                className="h-10 w-10 rounded-full object-cover"
+              />
+            ) : (
+              <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium">
+                {service.name.charAt(0)}
+              </div>
+            )}
             <div>
               <h3 className="font-medium">{service.name}</h3>
               <p className="text-sm text-gray-500 line-clamp-1">{service.description}</p>
@@ -44,8 +83,8 @@ export function ServiceList({ initialServices, initialHasMore }: ServiceListProp
             <Badge variant={service.isActive ? "outline" : "secondary"}>
               {service.isActive ? "Active" : "Inactive"}
             </Badge>
-            <Button variant="ghost" size="sm" onClick={() => toggleExpand(service.id)}>
-              {expandedService === service.id ? "Hide Details" : "Show Details"}
+            <Button variant="ghost" size="sm" onClick={() => toggleExpand(service._id)}>
+              {expandedServices.has(service._id) ? "Hide Details" : "Show Details"}
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -83,16 +122,16 @@ export function ServiceList({ initialServices, initialHasMore }: ServiceListProp
         </div>
         <div className="mt-2 text-xs text-gray-500 flex justify-between">
           <span>Created: {format(new Date(service.createdAt), "MMM d, yyyy")}</span>
-          <span>Providers: {service.providersCount}</span>
+          <span>Providers: {service?.providers?.length}</span>
         </div>
       </div>
 
-      {expandedService === service.id && (
+      {expandedServices.has(service._id) && (
         <div className="bg-gray-50 p-4 border-t">
-          <h4 className="font-medium mb-2">Sub-Services ({service.subServices.length})</h4>
+          <h4 className="font-medium mb-2">Sub-Services ({service?.subServices?.length})</h4>
           <div className="space-y-2">
             {service.subServices.map((subService) => (
-              <div key={subService.id} className="bg-white p-3 rounded border">
+              <div key={subService.name} className="bg-white p-3 rounded border">
                 <div className="flex justify-between items-center">
                   <div>
                     <h5 className="font-medium">{subService.name}</h5>
@@ -113,9 +152,9 @@ export function ServiceList({ initialServices, initialHasMore }: ServiceListProp
 
   return (
     <InfiniteScrollList
-      fetchData={fetchServices}
-      renderItem={renderService}
-      initialData={initialServices}
+      fetchData={fetchServices as any}
+      renderItem={renderService as any}
+      initialData={initialServices as any}
       initialHasMore={initialHasMore}
       searchPlaceholder="Search services by name or description..."
       emptyMessage="No services found"

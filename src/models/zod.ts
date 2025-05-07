@@ -18,7 +18,7 @@ export const serviceProviderRegisterSchema = z.object({
   ifscCode: z.string().optional(),
   bankName: z.string().optional(),
   branch: z.string().optional(),
-  isAvailable: z.boolean().default(true),
+  isAvailable: z.boolean(),
   workingDays: z.array(z.string()).optional(),
   workingHoursStart: z.string().optional(),
   workingHoursEnd: z.string().optional(),

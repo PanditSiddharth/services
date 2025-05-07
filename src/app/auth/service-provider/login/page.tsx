@@ -14,7 +14,6 @@ import { Form } from "@/components/ui/form"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MyField } from "@/components/my-field"
-import { loginServiceProvider, sendOTP, verifyOTP } from "@/app/actions/auth"
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -75,14 +74,14 @@ export default function ServiceProviderLogin() {
         }
       })
 
-      const result = await loginServiceProvider(formData);
+      // const result = await loginServiceProvider(formData);
 
-      if (result.success) {
-        toast.success(result.message);
-        router.push("/service-provider");
-      } else {
-        toast.error(result.message);
-      }
+      // if (result.success) {
+      //   toast.success(result.message);
+      //   router.push("/service-provider");
+      // } else {
+      //   toast.error(result.message);
+      // }
     } catch (error) {
       console.error("Login error:", error)
       toast.error("Login failed. Please try again.")
@@ -98,16 +97,16 @@ export default function ServiceProviderLogin() {
       const formData = new FormData()
       formData.append("phone", values.phone)
 
-      const result = await sendOTP(formData)
+      // const result = await sendOTP(formData)
 
-      if (result.success) {
-        toast.success(result.message)
-        setOtpSent(true)
-        setPhoneNumber(values.phone)
-        otpForm.setValue("phone", values.phone)
-      } else {
-        toast.error(result.message)
-      }
+      // if (result.success) {
+      //   toast.success(result.message)
+      //   setOtpSent(true)
+      //   setPhoneNumber(values.phone)
+      //   otpForm.setValue("phone", values.phone)
+      // } else {
+      //   toast.error(result.message)
+      // }
     } catch (error) {
       console.error("Send OTP error:", error)
       toast.error("Failed to send OTP. Please try again.")
@@ -124,14 +123,14 @@ export default function ServiceProviderLogin() {
       formData.append("phone", values.phone)
       formData.append("otp", values.otp)
 
-      const result = await verifyOTP(formData)
+      // const result = await verifyOTP(formData)
 
-      if (result.success) {
-        toast.success(result.message)
-        router.push("/dashboard")
-      } else {
-        toast.error(result.message)
-      }
+      // if (result.success) {
+      //   toast.success(result.message)
+      //   router.push("/dashboard")
+      // } else {
+      //   toast.error(result.message)
+      // }
     } catch (error) {
       console.error("Verify OTP error:", error)
       toast.error("OTP verification failed. Please try again.")

@@ -1,8 +1,8 @@
 import Google from "next-auth/providers/google";
 import Github from "next-auth/providers/github";
 import { NextAuthConfig } from "next-auth";
-
-export default { 
+import Credentials from "next-auth/providers/credentials";
+export default {
     cookies:
     {
         sessionToken: {
@@ -11,9 +11,22 @@ export default {
                 sameSite: "lax",
                 path: "/",
                 secure: true,
-                domain:  process.env.NODE_ENV === "production" ? ".ignoux.in" : undefined,
+                domain: process.env.NODE_ENV === "production" ? ".ignoux.in" : undefined,
             }
         }
     },
-    providers: [Google,Github]} satisfies NextAuthConfig
+    providers: [Credentials({
+        async authorize(credentials) {
+            try {
+                // Replace with actual user validation logic
+                return credentials as any; // Return a valid User object
+            } catch (error) {
+                console.error("Error in authorize:", error);
+                return null; // Return null in case of an error
+            }
+        },
+    }), Google, Github]
+} satisfies NextAuthConfig;
+
+
 

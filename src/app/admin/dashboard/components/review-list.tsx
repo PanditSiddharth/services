@@ -1,7 +1,6 @@
 "use client"
-
 import { useState } from "react"
-import { type Review, getReviews } from "@/app/actions/admin"
+import { type Review, getReviews } from "@/app/actions/admin0"
 import { InfiniteScrollList } from "./infinite-scroll-list"
 import { MoreHorizontal, Star, Flag, ThumbsDown, Eye } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -16,7 +15,7 @@ interface ReviewListProps {
 }
 
 export function ReviewList({ initialReviews, initialHasMore }: ReviewListProps) {
-  const [ratingFilter, setRatingFilter] = useState<string>("all")
+  const [ratingFilter, setRatingFilter] = useState<string>("all");
 
   const fetchReviews = async (page: number, search: string) => {
     const minRating = ratingFilter !== "all" ? Number.parseInt(ratingFilter) : undefined

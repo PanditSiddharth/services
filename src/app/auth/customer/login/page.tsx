@@ -7,7 +7,7 @@ import * as z from "zod"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Eye, EyeOff } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "react-toastify"
 
 import { Button } from "@/components/ui/button"
 import { Form } from "@/components/ui/form"
@@ -36,7 +36,7 @@ export default function UserLogin() {
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [otpSent, setOtpSent] = useState(false)
-  const [phoneNumber, setPhoneNumber] = useState("")
+  const [phoneNumber, setPhoneNumber] = useState("");
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),

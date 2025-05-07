@@ -6,8 +6,8 @@ import {
   getServices,
   getBookings,
   getReviews,
-  getDashboardStats,
-} from "@/app/actions/admin"
+} from "@/app/actions/admin";
+import { getDashboardStats } from "@/app/actions/admin0"
 import { UserList } from "./components/users-list"
 import { ProviderList } from "./components/provider-list"
 import { ServiceList } from "./components/service-list"
@@ -19,11 +19,11 @@ import { BookingChart } from "./components/booking-chart"
 
 export default async function DashboardPage() {
   // Fetch initial data for all lists
-  const { users, hasMore: hasMoreUsers } = await getUsers(1, 10)
+  const { users, pagination: { hasMore: hasMoreUsers }} = await getUsers(1, 10)
   const { providers, hasMore: hasMoreProviders } = await getServiceProviders(1, 10)
   const { services, hasMore: hasMoreServices } = await getServices(1, 10)
   const { bookings, hasMore: hasMoreBookings } = await getBookings(1, 10)
-  const { reviews, hasMore: hasMoreReviews } = await getReviews(1, 10)
+  const { reviews, pagination: { hasMore: hasMoreReviews } } = await getReviews(1, 10)
 
   // Get dashboard statistics
   const stats = await getDashboardStats()
@@ -55,7 +55,7 @@ export default async function DashboardPage() {
                 <CardDescription>Manage all services offered on the platform</CardDescription>
               </CardHeader>
               <CardContent>
-                <ServiceList initialServices={services} initialHasMore={hasMoreServices} />
+                <ServiceList initialServices={services as any} initialHasMore={hasMoreServices} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -67,7 +67,7 @@ export default async function DashboardPage() {
                 <CardDescription>Manage all service providers registered on the platform</CardDescription>
               </CardHeader>
               <CardContent>
-                <ProviderList initialProviders={providers} initialHasMore={hasMoreProviders} />
+                <ProviderList initialProviders={providers as any} initialHasMore={hasMoreProviders} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -79,7 +79,7 @@ export default async function DashboardPage() {
                 <CardDescription>Manage all users registered on the platform</CardDescription>
               </CardHeader>
               <CardContent>
-                <UserList initialUsers={users} initialHasMore={hasMoreUsers} />
+                <UserList initialUsers={users as any} initialHasMore={hasMoreUsers} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -91,7 +91,7 @@ export default async function DashboardPage() {
                 <CardDescription>Manage all service bookings on the platform</CardDescription>
               </CardHeader>
               <CardContent>
-                <BookingList initialBookings={bookings} initialHasMore={hasMoreBookings} />
+                <BookingList initialBookings={bookings as any} initialHasMore={hasMoreBookings} />
               </CardContent>
             </Card>
           </TabsContent>

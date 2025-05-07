@@ -1,9 +1,19 @@
+// correct it
 import NextAuth, { Session } from "next-auth";
-import auth_config from "./auth_config";
-import { createUser, checkExistingUser } from "@/server-functions/user";
-import { IUser } from "@/modals/user.model";
-import { userFilter } from "./helpers";
+import auth_config from "./auth_config"; // edit ...
+import { userRegisterSchema } from "@/models/zod";
+import { createOrUpdateUser, getUser } from "./app/actions/user";
+import { console } from "inspector";
+// Temporary implementations for missing functions
+async function checkExistingUser(email: string): Promise<any> {
+  // Simulate checking for an existing user
+  return null; // Return null to simulate no existing user
+}
 
+function userFilter(user: any): any {
+  return user; // Return the user as-is for now
+}
+type IUser = typeof userRegisterSchema;
 declare module 'next-auth' {
   interface Session {
     user: IUser,
@@ -12,33 +22,39 @@ declare module 'next-auth' {
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  pages: {
-    signIn: "/auth",
-  },
   session: {
     strategy: "jwt"
   },
   callbacks: {
-    async signIn({ user }) {
-      if (!user || !user.email) {
-        return false;
-      }
-      const existingUser = await checkExistingUser(user.email);
+    async signIn({ user }: any) {
+      console.log(user, "User")
+      // if (!user || !user.email) {
+      //   return false;
+      // }
 
-      if (!existingUser && user.name) {
-        await createUser({
-          email: user.email,
-          name: user.name,
-          image: user.image || "",
-        });
-      }
+      // const existingUser = await getUser({ email: user.email,
+      //   role: user?.role
+      // });
+
+      // if (!existingUser && user.name) {
+      //   delete user?.id;
+      //   delete user?.callbackUrl;
+      //   delete user?.csrfToken;
+      //   delete user?.confirmPassword;
+      //   console.log(user, "User")
+      //  const created = await createOrUpdateUser(user);
+      //  console.log(created, "Created User")
+      // }
 
       return true;
     },
 
     async jwt({ token, trigger, session, user }) {
+      console.log(user, token, trigger, session, "User")
       if (trigger === "signIn") {
-        const existingUser = await checkExistingUser(user.email!);
+
+        console.log(user, "User", token, session);
+        const existingUser = await getUser(user as any);
         if (typeof existingUser === "object")
           return { ...token, ...existingUser }
       }

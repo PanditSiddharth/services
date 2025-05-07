@@ -35,23 +35,6 @@ const serviceProviderSchema = new mongoose.Schema(
             ref: "Service",
             required: [true, "Profession is required"], // electrician, plumber, etc.
         },
-        services: [
-            {
-                service: {
-                    type: mongoose.Schema.Types.ObjectId,
-                    ref: "Service",
-                },
-                price: {
-                    type: Number,
-                    required: [true, "Price is required"],
-                },
-                priceUnit: {
-                    type: String,
-                    enum: ["hour", "day", "job"],
-                    default: "hour",
-                },
-            },
-        ],
         experience: {
             type: Number,
             required: [true, "Experience is required"],
@@ -152,6 +135,10 @@ const serviceProviderSchema = new mongoose.Schema(
             type: Date,
             default: Date.now,
         },
+        role: {
+            type: String,
+            default: "serviceProvider"
+        }
     },
     {
         timestamps: true,
@@ -183,6 +170,6 @@ serviceProviderSchema.methods.isAvailableInLocation = function (userLat: number,
     return distance <= 25;
 };
 
-const ServiceProvider = mongoose.models.ServiceProvider || mongoose.model("ServiceProvider", serviceProviderSchema)
+const ServiceProvider = mongoose.models?.ServiceProvider || mongoose.model("ServiceProvider", serviceProviderSchema)
 
 export default ServiceProvider;

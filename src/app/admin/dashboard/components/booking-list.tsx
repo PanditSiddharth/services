@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { type Booking, getBookings } from "@/app/actions/admin"
+import { getBookings } from "@/app/actions/admin"
 import { InfiniteScrollList } from "./infinite-scroll-list"
 import { Badge } from "@/components/ui/badge"
 import { MoreHorizontal, Eye, Phone, Mail, Calendar } from "lucide-react"
@@ -11,8 +11,54 @@ import { Card } from "@/components/ui/card"
 import { format } from "date-fns"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
+// Updated interface to match the MongoDB model
+interface BookingType {
+  _id: string
+  user: {
+    _id: string
+    name: string
+  }
+  serviceProvider: {
+    _id: string
+    name: string
+  }
+  service: {
+    _id: string
+    name: string
+  }
+  subService: {
+    name: string
+    price: number
+    priceUnit: "hour" | "day" | "job"
+  }
+  bookingDate: string
+  address: {
+    street?: string
+    city: string
+    state: string
+    pincode: string
+    landmark?: string
+    coordinates?: number[]
+  }
+  description: string
+  status: "pending" | "confirmed" | "in-progress" | "completed" | "cancelled" | "no-show"
+  paymentStatus: "pending" | "partial" | "completed" | "refunded"
+  paymentMethod: "cash" | "online" | "wallet"
+  estimatedPrice: number
+  finalPrice?: number
+  serviceStartTime?: string
+  serviceEndTime?: string
+  totalHours?: number
+  cancellationReason?: string
+  cancelledBy?: "user" | "provider" | "admin"
+  isReviewed: boolean
+  review?: string
+  createdAt: string
+  updatedAt: string
+}
+
 interface BookingListProps {
-  initialBookings: Booking[]
+  initialBookings: BookingType[]
   initialHasMore: boolean
 }
 
@@ -55,15 +101,17 @@ export function BookingList({ initialBookings, initialHasMore }: BookingListProp
     }
   }
 
-  const renderBooking = (booking: Booking) => (
+  const renderBooking = (booking: BookingType) => (
     <Card className="p-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-medium">{booking.serviceName}</h3>
+            <h3 className="font-medium">{booking?.service?.name}</h3>
             <Badge variant={getStatusColor(booking.status) as any}>{booking.status}</Badge>
           </div>
-          <p className="text-sm text-gray-500">{booking.subServiceName}</p>
+          {booking.subService && (
+            <p className="text-sm text-gray-500">{booking?.subService?.name}</p>
+          )}
           <div className="flex items-center gap-4 mt-2 text-sm">
             <div className="flex items-center gap-1">
               <Calendar className="h-4 w-4 text-gray-500" />
@@ -123,14 +171,19 @@ export function BookingList({ initialBookings, initialHasMore }: BookingListProp
       </div>
       <div className="mt-3 pt-3 border-t flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-500">
         <div>
-          <span className="font-medium">User:</span> {booking.userName}
+          <span className="font-medium">User:</span> {booking?.user?.name}
         </div>
         <div>
-          <span className="font-medium">Provider:</span> {booking.providerName}
+          <span className="font-medium">Provider:</span> {booking?.serviceProvider?.name}
         </div>
         <div>
-          <span className="font-medium">Location:</span> {booking.address.city}, {booking.address.state}
+          <span className="font-medium">Location:</span> {booking?.address?.city}, {booking?.address?.state}
         </div>
+        {booking.description && (
+          <div>
+            <span className="font-medium">Description:</span> {booking?.description?.substring(0, 50)}{booking.description.length > 50 ? '...' : ''}
+          </div>
+        )}
         <div>
           <span className="font-medium">Created:</span> {format(new Date(booking.createdAt), "MMM d, yyyy")}
         </div>
@@ -158,9 +211,9 @@ export function BookingList({ initialBookings, initialHasMore }: BookingListProp
         </Select>
       </div>
       <InfiniteScrollList
-        fetchData={fetchBookings}
-        renderItem={renderBooking}
-        initialData={initialBookings}
+        fetchData={fetchBookings as any}
+        renderItem={renderBooking as any}
+        initialData={initialBookings as any}
         initialHasMore={initialHasMore}
         searchPlaceholder="Search bookings by user, provider, or service..."
         emptyMessage="No bookings found"

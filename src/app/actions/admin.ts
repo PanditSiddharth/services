@@ -1,514 +1,461 @@
 "use server"
 
+import dbConnect from '@/lib/db-connect'
+import { User, ServiceProvider, Service, Booking, Review } from '@/models/index'
 // Types for our data
 export type User = {
-  id: string
-  name: string
-  email: string
-  phone: string
-  createdAt: string
-  lastLogin?: string
-  status: "active" | "inactive"
-}
-
-export type ServiceProvider = {
-  id: string
-  businessName: string
-  ownerName: string
-  email: string
-  phone: string
-  serviceType: string
-  experience: number
-  city: string
-  state: string
-  isAvailable: boolean
-  isVerified: boolean
-  rating: number
-  totalReviews: number
-  totalBookings: number
-  completedBookings: number
-  createdAt: string
-  status: "active" | "pending" | "suspended"
-}
-
-export type Service = {
-  id: string
-  name: string
-  slug: string
-  description: string
-  icon: string
-  image: string
-  isActive: boolean
-  subServices: {
     id: string
     name: string
-    description?: string
-    basePrice: number
-    priceUnit: "hour" | "day" | "job"
-  }[]
-  providersCount: number
-  createdAt: string
-  updatedAt: string
-}
-
-export type Booking = {
-  id: string
-  userId: string
-  userName: string
-  providerId: string
-  providerName: string
-  serviceId: string
-  serviceName: string
-  subServiceName: string
-  bookingDate: string
-  address: {
+    email: string
+    phone: string
+    createdAt: string
+    lastLogin?: string
+    status: "active" | "inactive"
+  }
+  
+  export type ServiceProvider = {
+    id: string
+    businessName: string
+    ownerName: string
+    email: string
+    phone: string
+    serviceType: string
+    experience: number
     city: string
     state: string
-    pincode: string
+    isAvailable: boolean
+    isVerified: boolean
+    rating: number
+    totalReviews: number
+    totalBookings: number
+    completedBookings: number
+    createdAt: string
+    status: "active" | "pending" | "suspended"
   }
-  status: "pending" | "confirmed" | "in-progress" | "completed" | "cancelled" | "no-show"
-  paymentStatus: "pending" | "partial" | "completed" | "refunded"
-  paymentMethod: "cash" | "online" | "wallet"
-  estimatedPrice: number
-  finalPrice?: number
-  createdAt: string
-}
-
-export type Review = {
-  id: string
-  userId: string
-  userName: string
-  providerId: string
-  providerName: string
-  bookingId: string
-  serviceId: string
-  serviceName: string
-  rating: number
-  comment: string
-  createdAt: string
-}
-
-// Mock data generator for development
-function generateMockUsers(count: number, offset = 0): User[] {
-  return Array.from({ length: count }, (_, i) => ({
-    id: `user-${offset + i + 1}`,
-    name: `User ${offset + i + 1}`,
-    email: `user${offset + i + 1}@example.com`,
-    phone: `+91${Math.floor(1000000000 + Math.random() * 9000000000)}`,
-    createdAt: new Date(Date.now() - Math.floor(Math.random() * 10000000000)).toISOString(),
-    lastLogin:
-      Math.random() > 0.3 ? new Date(Date.now() - Math.floor(Math.random() * 1000000000)).toISOString() : undefined,
-    status: Math.random() > 0.2 ? "active" : "inactive",
-  }))
-}
-
-function generateMockProviders(count: number, offset = 0): ServiceProvider[] {
-  const serviceTypes = ["plumber", "electrician", "carpenter", "painter", "gardener", "cleaner"]
-  const cities = ["Mumbai", "Delhi", "Bangalore", "Hyderabad", "Chennai", "Kolkata"]
-  const states = ["Maharashtra", "Delhi", "Karnataka", "Telangana", "Tamil Nadu", "West Bengal"]
-
-  return Array.from({ length: count }, (_, i) => ({
-    id: `provider-${offset + i + 1}`,
-    businessName: `Service Provider ${offset + i + 1}`,
-    ownerName: `Owner ${offset + i + 1}`,
-    email: `provider${offset + i + 1}@example.com`,
-    phone: `+91${Math.floor(1000000000 + Math.random() * 9000000000)}`,
-    serviceType: serviceTypes[Math.floor(Math.random() * serviceTypes.length)],
-    experience: Math.floor(Math.random() * 10) + 1,
-    city: cities[Math.floor(Math.random() * cities.length)],
-    state: states[Math.floor(Math.random() * states.length)],
-    isAvailable: Math.random() > 0.3,
-    isVerified: Math.random() > 0.4,
-    rating: Math.floor(Math.random() * 50 + 1) / 10,
-    totalReviews: Math.floor(Math.random() * 100),
-    totalBookings: Math.floor(Math.random() * 200),
-    completedBookings: Math.floor(Math.random() * 150),
-    createdAt: new Date(Date.now() - Math.floor(Math.random() * 10000000000)).toISOString(),
-    status: Math.random() > 0.7 ? "active" : Math.random() > 0.4 ? "pending" : "suspended",
-  }))
-}
-
-function generateMockServices(count: number, offset = 0): Service[] {
-  const serviceTypes = [
-    {
-      name: "Plumbing",
-      icon: "Droplet",
-      description: "Professional plumbing services for your home and office",
-    },
-    {
-      name: "Electrical",
-      icon: "Zap",
-      description: "Electrical repair and installation services",
-    },
-    {
-      name: "Carpentry",
-      icon: "Hammer",
-      description: "Custom carpentry and woodworking services",
-    },
-    {
-      name: "Painting",
-      icon: "Paintbrush",
-      description: "Interior and exterior painting services",
-    },
-    {
-      name: "Gardening",
-      icon: "Flower2",
-      description: "Professional gardening and landscaping services",
-    },
-    {
-      name: "Cleaning",
-      icon: "Sparkles",
-      description: "Deep cleaning services for homes and offices",
-    },
-    {
-      name: "Appliance Repair",
-      icon: "Wrench",
-      description: "Repair services for all home appliances",
-    },
-    {
-      name: "AC Repair",
-      icon: "Wind",
-      description: "Air conditioner repair and maintenance services",
-    },
-  ]
-
-  return Array.from({ length: count }, (_, i) => {
-    const serviceType = serviceTypes[i % serviceTypes.length]
-    const subServicesCount = Math.floor(Math.random() * 5) + 2
-
-    return {
-      id: `service-${offset + i + 1}`,
-      name: serviceType.name,
-      slug: serviceType.name.toLowerCase().replace(/\s+/g, "-"),
-      description: serviceType.description,
-      icon: serviceType.icon,
-      image: "/placeholder.svg",
-      isActive: Math.random() > 0.2,
-      subServices: Array.from({ length: subServicesCount }, (_, j) => ({
-        id: `subservice-${i}-${j}`,
-        name: `${serviceType.name} Service ${j + 1}`,
-        description: `Description for ${serviceType.name} Service ${j + 1}`,
-        basePrice: Math.floor(Math.random() * 1000) + 200,
-        priceUnit: ["hour", "day", "job"][Math.floor(Math.random() * 3)] as "hour" | "day" | "job",
-      })),
-      providersCount: Math.floor(Math.random() * 20) + 5,
-      createdAt: new Date(Date.now() - Math.floor(Math.random() * 10000000000)).toISOString(),
-      updatedAt: new Date(Date.now() - Math.floor(Math.random() * 1000000000)).toISOString(),
+  
+  export type Service = {
+    id: string
+    name: string
+    slug: string
+    description: string
+    icon: string
+    image: string
+    isActive: boolean
+    subServices: {
+      id: string
+      name: string
+      description?: string
+      basePrice: number
+      priceUnit: "hour" | "day" | "job"
+    }[]
+    providersCount: number
+    createdAt: string
+    updatedAt: string
+  }
+  
+  export type Booking = {
+    id: string
+    userId: string
+    userName: string
+    providerId: string
+    providerName: string
+    serviceId: string
+    serviceName: string
+    subServiceName: string
+    bookingDate: string
+    address: {
+      city: string
+      state: string
+      pincode: string
     }
-  })
-}
-
-function generateMockBookings(count: number, offset = 0): Booking[] {
-  const statuses: Booking["status"][] = ["pending", "confirmed", "in-progress", "completed", "cancelled", "no-show"]
-  const paymentStatuses: Booking["paymentStatus"][] = ["pending", "partial", "completed", "refunded"]
-  const paymentMethods: Booking["paymentMethod"][] = ["cash", "online", "wallet"]
-  const services = ["Plumbing", "Electrical", "Carpentry", "Painting", "Gardening", "Cleaning"]
-  const cities = ["Mumbai", "Delhi", "Bangalore", "Hyderabad", "Chennai", "Kolkata"]
-  const states = ["Maharashtra", "Delhi", "Karnataka", "Telangana", "Tamil Nadu", "West Bengal"]
-
-  return Array.from({ length: count }, (_, i) => {
-    const service = services[Math.floor(Math.random() * services.length)]
-    const status = statuses[Math.floor(Math.random() * statuses.length)]
-
-    return {
-      id: `booking-${offset + i + 1}`,
-      userId: `user-${Math.floor(Math.random() * 50) + 1}`,
-      userName: `User ${Math.floor(Math.random() * 50) + 1}`,
-      providerId: `provider-${Math.floor(Math.random() * 50) + 1}`,
-      providerName: `Provider ${Math.floor(Math.random() * 50) + 1}`,
-      serviceId: `service-${Math.floor(Math.random() * 8) + 1}`,
-      serviceName: service,
-      subServiceName: `${service} Service ${Math.floor(Math.random() * 3) + 1}`,
-      bookingDate: new Date(Date.now() + Math.floor(Math.random() * 1000000000)).toISOString(),
-      address: {
-        city: cities[Math.floor(Math.random() * cities.length)],
-        state: states[Math.floor(Math.random() * states.length)],
-        pincode: `${Math.floor(Math.random() * 900000) + 100000}`,
-      },
-      status,
-      paymentStatus: paymentStatuses[Math.floor(Math.random() * paymentStatuses.length)],
-      paymentMethod: paymentMethods[Math.floor(Math.random() * paymentMethods.length)],
-      estimatedPrice: Math.floor(Math.random() * 5000) + 500,
-      finalPrice: status === "completed" ? Math.floor(Math.random() * 5000) + 500 : undefined,
-      createdAt: new Date(Date.now() - Math.floor(Math.random() * 10000000000)).toISOString(),
-    }
-  })
-}
-
-function generateMockReviews(count: number, offset = 0): Review[] {
-  const services = ["Plumbing", "Electrical", "Carpentry", "Painting", "Gardening", "Cleaning"]
-  const comments = [
-    "Great service, very professional!",
-    "Arrived on time and did an excellent job.",
-    "Very satisfied with the work done.",
-    "Good service but a bit expensive.",
-    "Excellent work, will definitely hire again!",
-    "Professional and courteous service.",
-    "Did a decent job but could improve on timeliness.",
-    "Very knowledgeable and efficient.",
-    "Solved the problem quickly and effectively.",
-    "Highly recommended for quality work.",
-  ]
-
-  return Array.from({ length: count }, (_, i) => {
-    const service = services[Math.floor(Math.random() * services.length)]
-
-    return {
-      id: `review-${offset + i + 1}`,
-      userId: `user-${Math.floor(Math.random() * 50) + 1}`,
-      userName: `User ${Math.floor(Math.random() * 50) + 1}`,
-      providerId: `provider-${Math.floor(Math.random() * 50) + 1}`,
-      providerName: `Provider ${Math.floor(Math.random() * 50) + 1}`,
-      bookingId: `booking-${Math.floor(Math.random() * 100) + 1}`,
-      serviceId: `service-${Math.floor(Math.random() * 8) + 1}`,
-      serviceName: service,
-      rating: Math.floor(Math.random() * 5) + 1,
-      comment: comments[Math.floor(Math.random() * comments.length)],
-      createdAt: new Date(Date.now() - Math.floor(Math.random() * 10000000000)).toISOString(),
-    }
-  })
-}
-
-// Server actions to fetch paginated data
+    status: "pending" | "confirmed" | "in-progress" | "completed" | "cancelled" | "no-show"
+    paymentStatus: "pending" | "partial" | "completed" | "refunded"
+    paymentMethod: "cash" | "online" | "wallet"
+    estimatedPrice: number
+    finalPrice?: number
+    createdAt: string
+  }
+  
+  export type Review = {
+    id: string
+    userId: string
+    userName: string
+    providerId: string
+    providerName: string
+    bookingId: string
+    serviceId: string
+    serviceName: string
+    rating: number
+    comment: string
+    createdAt: string
+  }
+  
+// Server actions to fetch paginated data from MongoDB
 export async function getUsers(page = 1, limit = 10, search = "") {
-  // In a real app, you would fetch from your database
-  // For now, we'll use mock data
-  await new Promise((resolve) => setTimeout(resolve, 500)) // Simulate network delay
-
-  const offset = (page - 1) * limit
-  let users = generateMockUsers(100, 0)
-
-  // Apply search filter if provided
-  if (search) {
-    const searchLower = search.toLowerCase()
-    users = users.filter(
-      (user) =>
-        user.name.toLowerCase().includes(searchLower) ||
-        user.email.toLowerCase().includes(searchLower) ||
-        user.phone.toLowerCase().includes(searchLower),
-    )
+    try {
+      dbConnect()
+      // Validate and sanitize inputs
+      const pageNum = Math.max(1, Number(page));
+      const limitNum = Math.max(1, Math.min(100, Number(limit))); // Cap at 100 for performance
+      const searchTerm = (search || "").trim();
+      
+      // Build search query
+      let query = {};
+      if (searchTerm) {
+        query = {
+          $or: [
+            { name: { $regex: searchTerm, $options: 'i' } },
+            { email: { $regex: searchTerm, $options: 'i' } },
+            { phone: { $regex: searchTerm, $options: 'i' } }
+          ]
+        };
+      }
+  
+      // Pagination calculations
+      const skip = (pageNum - 1) * limitNum;
+      
+      // Execute count query and data query in parallel for better performance
+      const [totalCount, users] = await Promise.all([
+        User.countDocuments(query),
+        User.find(query)
+          .select('name email phone profileImage role isActive createdAt updatedAt address') // Select only needed fields
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limitNum)
+          .lean() // For better performance
+      ]);
+      
+      // Check if there are more pages
+      const hasMore = skip + users.length < totalCount;
+      
+      // Map MongoDB documents to the expected format with proper error handling
+      const formattedUsers = users.map(user => ({
+        id: user._id?.toString() || '',
+        name: user.name || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        profileImage: user.profileImage || '/placeholder.svg',
+        role: user.role || 'user',
+        isActive: user.isActive !== false, // Default to true if undefined
+        address: user.address ? {
+          city: user.address.city || '',
+          state: user.address.state || '',
+          pincode: user.address.pincode || '',
+          street: user.address.street || '',
+          landmark: user.address.landmark || ''
+        } : null,
+        bookingsCount: user.bookings?.length || 0,
+        createdAt: user.createdAt?.toISOString() || new Date().toISOString(),
+        updatedAt: user.updatedAt?.toISOString() || new Date().toISOString()
+      }));
+      
+      // Return formatted response with enhanced pagination info
+      return {
+        users: formattedUsers,
+        pagination: {
+          total: totalCount,
+          page: pageNum,
+          limit: limitNum,
+          hasMore
+        }
+      };
+    } catch (error) {
+      // Enhanced error logging with context
+      console.error('Error fetching users:', error);
+      
+      // More descriptive error message
+      if (error instanceof Error) {
+        throw new Error(`Failed to fetch users: ${error.message}`);
+      }
+      
+      throw new Error('Failed to fetch users due to an unknown error');
+    }
   }
-
-  const paginatedUsers = users.slice(offset, offset + limit)
-  const hasMore = offset + limit < users.length
-
-  return {
-    users: paginatedUsers,
-    hasMore,
-  }
-}
-
 export async function getServiceProviders(page = 1, limit = 10, search = "") {
-  // In a real app, you would fetch from your database
-  // For now, we'll use mock data
-  await new Promise((resolve) => setTimeout(resolve, 500)) // Simulate network delay
-
-  const offset = (page - 1) * limit
-  let providers = generateMockProviders(100, 0)
-
-  // Apply search filter if provided
-  if (search) {
-    const searchLower = search.toLowerCase()
-    providers = providers.filter(
-      (provider) =>
-        provider.businessName.toLowerCase().includes(searchLower) ||
-        provider.ownerName.toLowerCase().includes(searchLower) ||
-        provider.email.toLowerCase().includes(searchLower) ||
-        provider.serviceType.toLowerCase().includes(searchLower) ||
-        provider.city.toLowerCase().includes(searchLower),
-    )
+    try {
+      dbConnect()
+      // Build search query
+      let query = {};
+      if (search) {
+        query = {
+          $or: [
+            { name: { $regex: search, $options: 'i' } },
+            { email: { $regex: search, $options: 'i' } },
+            { phone: { $regex: search, $options: 'i' } },
+            { 'address.city': { $regex: search, $options: 'i' } },
+            { 'address.state': { $regex: search, $options: 'i' } }
+          ]
+        };
+      }
+  
+      // Count total matching documents for pagination
+      const totalCount = await ServiceProvider.countDocuments(query);
+      
+      // Calculate pagination
+      const skip = (page - 1) * limit;
+      const hasMore = skip + limit < totalCount;
+      
+      // Fetch providers
+      const providers = await ServiceProvider.find(query)
+        .populate('profession')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+      
+      // Map MongoDB documents to the expected format
+      const formattedProviders = providers.map(provider => ({
+        id: provider?._id?.toString(),
+        name: provider.name,
+        email: provider.email,
+        phone: provider.phone,
+        profileImage: provider.profileImage,
+        profession: provider.profession?.name || '',
+        professionId: provider.profession?._id?.toString(),
+        experience: provider.experience,
+        address: {
+          city: provider.address?.city || '',
+          state: provider.address?.state || '',
+          pincode: provider.address?.pincode || ''
+        },
+        isAvailable: provider.availability?.isAvailable || false,
+        isVerified: provider.isVerified,
+        isActive: provider.isActive,
+        rating: provider.rating,
+        totalReviews: provider.totalReviews,
+        totalBookings: provider.totalBookings,
+        completedBookings: provider.completedBookings,
+        createdAt: provider.createdAt.toISOString()
+      }));
+      
+      return {
+        providers: formattedProviders,
+        hasMore
+      };
+    } catch (error) {
+      console.error('Error fetching service providers:', error);
+      throw new Error('Failed to fetch service providers');
+    }
   }
 
-  const paginatedProviders = providers.slice(offset, offset + limit)
-  const hasMore = offset + limit < providers.length
-
-  return {
-    providers: paginatedProviders,
-    hasMore,
+  export async function getServices(page = 1, limit = 10, search = "") {
+    try {
+      dbConnect()
+      // Build search query
+      let query = {};
+      if (search) {
+        query = {
+          $or: [
+            { name: { $regex: search, $options: 'i' } },
+            { description: { $regex: search, $options: 'i' } },
+            { 'subServices.name': { $regex: search, $options: 'i' } }
+          ]
+        };
+      }
+  
+      // Count total matching documents for pagination
+      const totalCount = await Service.countDocuments(query);
+      
+      // Calculate pagination
+      const skip = (page - 1) * limit;
+      const hasMore = skip + limit < totalCount;
+      
+      // Fetch services
+      const services = await Service.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+      
+      // Map MongoDB documents to the expected format
+      const formattedServices = services.map(service => ({
+        id: service?._id?.toString(),
+        name: service.name,
+        slug: service.slug,
+        description: service.description,
+        icon: service.icon,
+        image: service.image,
+        isActive: service.isActive,
+        subServices: service.subServices.map(sub => ({
+          id: sub._id.toString(),
+          name: sub.name,
+          description: sub.description || '',
+          basePrice: sub.basePrice,
+          priceUnit: sub.priceUnit
+        })),
+        providersCount: service.providers?.length || 0,
+        createdAt: service.createdAt.toISOString(),
+        updatedAt: service.updatedAt.toISOString()
+      }));
+      
+      return {
+        services: formattedServices,
+        hasMore
+      };
+    } catch (error) {
+      console.error('Error fetching services:', error);
+      throw new Error('Failed to fetch services');
+    }
   }
-}
-
-export async function getServices(page = 1, limit = 10, search = "") {
-  await new Promise((resolve) => setTimeout(resolve, 500)) // Simulate network delay
-
-  const offset = (page - 1) * limit
-  let services = generateMockServices(20, 0)
-
-  // Apply search filter if provided
-  if (search) {
-    const searchLower = search.toLowerCase()
-    services = services.filter(
-      (service) =>
-        service.name.toLowerCase().includes(searchLower) ||
-        service.description.toLowerCase().includes(searchLower) ||
-        service.subServices.some((sub) => sub.name.toLowerCase().includes(searchLower)),
-    )
-  }
-
-  const paginatedServices = services.slice(offset, offset + limit)
-  const hasMore = offset + limit < services.length
-
-  return {
-    services: paginatedServices,
-    hasMore,
-  }
-}
 
 export async function getBookings(page = 1, limit = 10, search = "", status?: string) {
-  await new Promise((resolve) => setTimeout(resolve, 500)) // Simulate network delay
-
-  const offset = (page - 1) * limit
-  let bookings = generateMockBookings(200, 0)
-
-  // Apply status filter if provided
-  if (status && status !== "all") {
-    bookings = bookings.filter((booking) => booking.status === status)
+    try {
+      dbConnect()
+      // Build query
+      const query: any = {};
+      
+      // Add status filter if provided
+      if (status && status !== "all") {
+        query.status = status;
+      }
+      
+      // Add search filter if provided
+      if (search) {
+        query.$or = [
+          // We need an associated schema to properly match these fields
+          // Using best guesses based on the provided information
+          { 'user.name': { $regex: search, $options: 'i' } },
+          { 'serviceProvider.name': { $regex: search, $options: 'i' } },
+          { 'service.name': { $regex: search, $options: 'i' } },
+          { 'subServiceName': { $regex: search, $options: 'i' } },
+          { 'address.city': { $regex: search, $options: 'i' } }
+        ];
+      }
+  
+      // Count total matching documents for pagination
+      const totalCount = await Booking.countDocuments(query);
+      
+      // Calculate pagination
+      const skip = (page - 1) * limit;
+      const hasMore = skip + limit < totalCount;
+      
+      // Fetch bookings with populated references
+      const bookings = await Booking.find(query)
+        .populate('user', 'name')
+        .populate('serviceProvider', 'name')
+        .populate('service', 'name')
+        .populate('review')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+      
+      // Map MongoDB documents to the expected format
+      const formattedBookings = bookings.map(booking => ({
+        id: booking?._id?.toString(),
+        userId: booking.user?._id?.toString(),
+        userName: booking.user?.name,
+        providerId: booking.serviceProvider?._id?.toString(),
+        providerName: booking.serviceProvider?.name,
+        serviceId: booking.service?._id?.toString(),
+        serviceName: booking.service?.name,
+        subServiceName: booking.subServiceName,
+        bookingDate: booking.bookingDate?.toISOString(),
+        address: booking.address || {
+          city: '',
+          state: '',
+          pincode: ''
+        },
+        status: booking.status,
+        paymentStatus: booking.paymentStatus,
+        paymentMethod: booking.paymentMethod,
+        estimatedPrice: booking.estimatedPrice,
+        finalPrice: booking.finalPrice,
+        isReviewed: booking.isReviewed || false,
+        reviewId: booking.review?._id?.toString(),
+        createdAt: booking.createdAt?.toISOString()
+      }));
+      
+      return {
+        bookings: formattedBookings,
+        hasMore
+      };
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+      throw new Error('Failed to fetch bookings');
+    }
   }
-
-  // Apply search filter if provided
-  if (search) {
-    const searchLower = search.toLowerCase()
-    bookings = bookings.filter(
-      (booking) =>
-        booking.userName.toLowerCase().includes(searchLower) ||
-        booking.providerName.toLowerCase().includes(searchLower) ||
-        booking.serviceName.toLowerCase().includes(searchLower) ||
-        booking.subServiceName.toLowerCase().includes(searchLower) ||
-        booking.address.city.toLowerCase().includes(searchLower),
-    )
-  }
-
-  const paginatedBookings = bookings.slice(offset, offset + limit)
-  const hasMore = offset + limit < bookings.length
-
-  return {
-    bookings: paginatedBookings,
-    hasMore,
-  }
-}
 
 export async function getReviews(page = 1, limit = 10, search = "", minRating?: number) {
-  await new Promise((resolve) => setTimeout(resolve, 500)) // Simulate network delay
-
-  const offset = (page - 1) * limit
-  let reviews = generateMockReviews(150, 0)
-
-  // Apply rating filter if provided
-  if (minRating) {
-    reviews = reviews.filter((review) => review.rating >= minRating)
+    try {
+      dbConnect()
+      // Convert params to appropriate types
+      const pageNum = Math.max(1, Number(page));
+      const limitNum = Math.max(1, Math.min(100, Number(limit))); // Cap at 100 for performance
+      const minRatingNum = minRating ? Number(minRating) : undefined;
+      
+      // Build base query
+      const query: any = {};
+      
+      // Add rating filter if provided and valid
+      if (minRatingNum !== undefined && !isNaN(minRatingNum)) {
+        query.rating = { $gte: minRatingNum };
+      }
+      
+      // Add search filter if provided
+      if (search && typeof search === 'string' && search.trim()) {
+        // Search across referenced document fields requires proper population
+        query.$or = [
+          { comment: { $regex: search, $options: 'i' } } // Direct field in review schema
+        ];
+      }
+  
+      // Pagination calculations
+      const skip = (pageNum - 1) * limitNum;
+      
+      // Execute count query and data query in parallel for better performance
+      const [totalCount, reviews] = await Promise.all([
+        Review.countDocuments(query),
+        Review.find(query)
+          .populate('user', 'name')
+          .populate('serviceProvider', 'name')
+          .populate('service', 'name')
+          .populate('booking', 'bookingDate')
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limitNum)
+          .lean()
+      ]);
+      
+      // Check if there are more pages
+      const hasMore = skip + reviews.length < totalCount;
+      
+      // Map MongoDB documents to the expected format with proper error handling
+      const formattedReviews = reviews.map(review => ({
+        id: review._id?.toString() || '',
+        userId: review.user?._id?.toString() || '',
+        userName: review.user?.name || '',
+        providerId: review.serviceProvider?._id?.toString() || '',
+        providerName: review.serviceProvider?.name || '',
+        bookingId: review.booking?._id?.toString() || '',
+        bookingDate: review.booking?.bookingDate?.toISOString() || '',
+        serviceId: review.service?._id?.toString() || '',
+        serviceName: review.service?.name || '',
+        rating: review.rating || 0,
+        comment: review.comment || '',
+        createdAt: review.createdAt?.toISOString() || new Date().toISOString()
+      }));
+      
+      // Return formatted response
+      return {
+        reviews: formattedReviews,
+        pagination: {
+          total: totalCount,
+          page: pageNum,
+          limit: limitNum,
+          hasMore
+        }
+      };
+    } catch (error) {
+      // Enhanced error logging and handling
+      console.error('Error fetching reviews:', error);
+      
+      // Provide more context in the error message
+      if (error instanceof Error) {
+        throw new Error(`Failed to fetch reviews: ${error.message}`);
+      }
+      
+      throw new Error('Failed to fetch reviews due to an unknown error');
+    }
   }
 
-  // Apply search filter if provided
-  if (search) {
-    const searchLower = search.toLowerCase()
-    reviews = reviews.filter(
-      (review) =>
-        review.userName.toLowerCase().includes(searchLower) ||
-        review.providerName.toLowerCase().includes(searchLower) ||
-        review.serviceName.toLowerCase().includes(searchLower) ||
-        review.comment.toLowerCase().includes(searchLower),
-    )
-  }
-
-  const paginatedReviews = reviews.slice(offset, offset + limit)
-  const hasMore = offset + limit < reviews.length
-
-  return {
-    reviews: paginatedReviews,
-    hasMore,
-  }
-}
-
-// Get dashboard statistics
-export async function getDashboardStats() {
-  await new Promise((resolve) => setTimeout(resolve, 300)) // Simulate network delay
-
-  const users = generateMockUsers(100)
-  const providers = generateMockProviders(100)
-  const services = generateMockServices(20)
-  const bookings = generateMockBookings(200)
-  const reviews = generateMockReviews(150)
-
-  // Calculate statistics
-  const totalUsers = users.length
-  const activeUsers = users.filter((user) => user.status === "active").length
-
-  const totalProviders = providers.length
-  const activeProviders = providers.filter((provider) => provider.status === "active").length
-  const verifiedProviders = providers.filter((provider) => provider.isVerified).length
-
-  const totalServices = services.length
-  const activeServices = services.filter((service) => service.isActive).length
-  const totalSubServices = services.reduce((total, service) => total + service.subServices.length, 0)
-
-  const totalBookings = bookings.length
-  const pendingBookings = bookings.filter((booking) => booking.status === "pending").length
-  const completedBookings = bookings.filter((booking) => booking.status === "completed").length
-  const cancelledBookings = bookings.filter(
-    (booking) => booking.status === "cancelled" || booking.status === "no-show",
-  ).length
-
-  const totalRevenue = bookings
-    .filter((booking) => booking.status === "completed" && booking.finalPrice)
-    .reduce((total, booking) => total + (booking.finalPrice || 0), 0)
-
-  const averageRating = reviews.reduce((total, review) => total + review.rating, 0) / reviews.length
-
-  // Recent activity
-  const recentBookings = bookings
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 5)
-
-  const recentReviews = reviews
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 5)
-
-  // Service distribution
-  const serviceDistribution = services.map((service) => ({
-    name: service.name,
-    subServices: service.subServices.length,
-    providers: service.providersCount,
-  }))
-
-  // Monthly booking trends (last 6 months)
-  const currentDate = new Date()
-  const monthlyBookings = Array.from({ length: 6 }, (_, i) => {
-    const month = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1)
-    const monthName = month.toLocaleString("default", { month: "short" })
-    const count = Math.floor(Math.random() * 50) + 10 // Mock data
-    return { month: monthName, count }
-  }).reverse()
-
-  return {
-    counts: {
-      totalUsers,
-      activeUsers,
-      totalProviders,
-      activeProviders,
-      verifiedProviders,
-      totalServices,
-      activeServices,
-      totalSubServices,
-      totalBookings,
-      pendingBookings,
-      completedBookings,
-      cancelledBookings,
-    },
-    financial: {
-      totalRevenue,
-      averageOrderValue: totalRevenue / completedBookings,
-    },
-    satisfaction: {
-      averageRating,
-      totalReviews: reviews.length,
-    },
-    recent: {
-      bookings: recentBookings,
-      reviews: recentReviews,
-    },
-    analytics: {
-      serviceDistribution,
-      monthlyBookings,
-    },
-  }
-}

@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { format } from "date-fns"
-import type { Booking, Review } from "@/app/actions/admin"
+import type { Booking, Review } from "@/app/actions/admin0"
 import { Star } from "lucide-react"
 
 interface RecentActivityProps {
