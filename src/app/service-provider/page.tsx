@@ -1,5 +1,5 @@
 "use client"
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Icons } from "@/components/icons";
@@ -17,6 +17,9 @@ import {
   Pie,
   Cell,
 } from "recharts";
+import { useSession } from "next-auth/react";
+import { getUser } from "../actions/user";
+import Loading from "../user/dashboard/loading";
 
 // Mock data for demonstration
 const mockServiceProvider = {
@@ -164,10 +167,29 @@ const StatusBadge = ({ status }: any) => {
 };
 
 export default function ServiceProviderDashboard() {
+  const mockServiceProvider = useSession().data?.user as any;
+
+  useEffect(() => {
+    if(mockServiceProvider){
+      getUser({
+        email: mockServiceProvider.email,
+        role: "serviceProvider",
+        populate: true
+      }).then((user) => {
+        if (user) {
+          Object.assign(mockServiceProvider, user);
+        }
+      }).catch((error) => {
+        console.error("Error fetching user:", error);
+      })
+    }
+  },[]);
+
+
   const [activeTab, setActiveTab] = useState("overview");
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    !mockServiceProvider ?  <Loading /> : <div className="flex flex-col min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8 flex justify-between items-center">
@@ -177,11 +199,11 @@ export default function ServiceProviderDashboard() {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                {mockServiceProvider.name}
+                {mockServiceProvider?.name}
               </h1>
               <p className="text-gray-600">
-                {mockServiceProvider.profession.name}
-                {mockServiceProvider.isVerified && (
+                {mockServiceProvider?.profession?.name}
+                {mockServiceProvider?.isVerified && (
                   <Badge className="ml-2 bg-green-100 text-green-800">
                     <Icons.Check className="mr-1 h-3 w-3" /> Verified
                   </Badge>
@@ -190,8 +212,8 @@ export default function ServiceProviderDashboard() {
             </div>
           </div>
           <div className="flex items-center space-x-4">
-            <Badge className={mockServiceProvider.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
-              {mockServiceProvider.isActive ? "Active" : "Inactive"}
+            <Badge className={mockServiceProvider?.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+              {mockServiceProvider?.isActive ? "Active" : "Inactive"}
             </Badge>
             <button className="p-2 rounded-full hover:bg-gray-100">
               <Icons.Settings size={20} />
@@ -236,9 +258,9 @@ export default function ServiceProviderDashboard() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{mockServiceProvider.totalBookings}</div>
+                  <div className="text-2xl font-bold">{mockServiceProvider?.totalBookings}</div>
                   <p className="text-xs text-gray-500 mt-1">
-                    {mockServiceProvider.completedBookings} completed
+                    {mockServiceProvider?.completedBookings} completed
                   </p>
                 </CardContent>
               </Card>
@@ -251,13 +273,13 @@ export default function ServiceProviderDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold flex items-center">
-                    {mockServiceProvider.rating}
+                    {mockServiceProvider?.rating}
                     <span className="text-yellow-500 ml-1">
                       <Icons.User className="h-5 w-5" />
                     </span>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    {mockServiceProvider.totalReviews} reviews
+                    {mockServiceProvider?.totalReviews} reviews
                   </p>
                 </CardContent>
               </Card>
@@ -270,7 +292,7 @@ export default function ServiceProviderDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {Math.round((mockServiceProvider.completedBookings / mockServiceProvider.totalBookings) * 100)}%
+                    {Math.round((mockServiceProvider?.completedBookings / mockServiceProvider?.totalBookings) * 100)}%
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
                     Last 30 days
@@ -385,10 +407,10 @@ export default function ServiceProviderDashboard() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-900">
-                              {booking.service.name}
+                              {booking?.service?.name}
                             </div>
                             <div className="text-sm text-gray-500">
-                              {booking.subService.name}
+                              {booking?.subService?.name}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -459,10 +481,10 @@ export default function ServiceProviderDashboard() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-900">
-                              {booking.service.name}
+                              {booking?.service?.name}
                             </div>
                             <div className="text-sm text-gray-500">
-                              {booking.subService.name}
+                              {booking?.subService?.name}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -521,7 +543,7 @@ export default function ServiceProviderDashboard() {
               <CardHeader>
                 <CardTitle>Customer Reviews</CardTitle>
                 <CardDescription>
-                  Your average rating: {mockServiceProvider.rating}/5 from {mockServiceProvider.totalReviews} reviews
+                  Your average rating: {mockServiceProvider?.rating}/5 from {mockServiceProvider?.totalReviews} reviews
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -539,7 +561,7 @@ export default function ServiceProviderDashboard() {
                                 <Icons.User
                                   key={i}
                                   className={`h-4 w-4 ${
-                                    i < review.rating
+                                    i < review?.rating
                                       ? "text-yellow-500"
                                       : "text-gray-300"
                                   }`}
@@ -571,28 +593,28 @@ export default function ServiceProviderDashboard() {
                 <CardContent className="space-y-4">
                   <div>
                     <h4 className="text-sm font-medium text-gray-500">Full Name</h4>
-                    <p className="mt-1">{mockServiceProvider.name}</p>
+                    <p className="mt-1">{mockServiceProvider?.name}</p>
                   </div>
                   <div>
                     <h4 className="text-sm font-medium text-gray-500">Email</h4>
-                    <p className="mt-1">{mockServiceProvider.email}</p>
+                    <p className="mt-1">{mockServiceProvider?.email}</p>
                   </div>
                   <div>
                     <h4 className="text-sm font-medium text-gray-500">Phone</h4>
-                    <p className="mt-1">{mockServiceProvider.phone}</p>
+                    <p className="mt-1">{mockServiceProvider?.phone}</p>
                   </div>
                   <div>
                     <h4 className="text-sm font-medium text-gray-500">Profession</h4>
-                    <p className="mt-1">{mockServiceProvider.profession.name}</p>
+                    <p className="mt-1">{mockServiceProvider?.profession?.name}</p>
                   </div>
                   <div>
                     <h4 className="text-sm font-medium text-gray-500">Experience</h4>
-                    <p className="mt-1">{mockServiceProvider.experience} years</p>
+                    <p className="mt-1">{mockServiceProvider?.experience} years</p>
                   </div>
                   <div>
                     <h4 className="text-sm font-medium text-gray-500">Address</h4>
                     <p className="mt-1">
-                      {mockServiceProvider.address.street}, {mockServiceProvider.address.city}, {mockServiceProvider.address.state} {mockServiceProvider.address.pincode}
+                      {mockServiceProvider?.address?.street}, {mockServiceProvider?.address?.city}, {mockServiceProvider?.address?.state} {mockServiceProvider?.address?.pincode}
                     </p>
                   </div>
                 </CardContent>
@@ -605,17 +627,17 @@ export default function ServiceProviderDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {mockServiceProvider.services.map((service, index) => (
+                    {mockServiceProvider?.services?.map((service, index) => (
                       <div key={index} className="flex justify-between items-center border-b pb-3 last:border-b-0">
                         <div>
-                          <h4 className="font-medium">{service.service.name}</h4>
+                          <h4 className="font-medium">{service?.service?.name}</h4>
                           <p className="text-sm text-gray-500">
-                            {service.priceUnit === "hour" && "Hourly Rate"}
-                            {service.priceUnit === "job" && "Fixed Price"}
-                            {service.priceUnit === "day" && "Daily Rate"}
+                            {service?.priceUnit === "hour" && "Hourly Rate"}
+                            {service?.priceUnit === "job" && "Fixed Price"}
+                            {service?.priceUnit === "day" && "Daily Rate"}
                           </p>
                         </div>
-                        <p className="font-medium">₹{service.price}</p>
+                        <p className="font-medium">₹{service?.price}</p>
                       </div>
                     ))}
                   </div>
@@ -630,7 +652,7 @@ export default function ServiceProviderDashboard() {
                 <CardContent>
                   <div className="grid grid-cols-7 gap-2">
                     {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day) => {
-                      const isWorkingDay = mockServiceProvider.availability.workingDays.includes(day);
+                      const isWorkingDay = mockServiceProvider?.availability?.workingDays?.includes(day);
                       return (
                         <div 
                           key={day}
@@ -639,7 +661,7 @@ export default function ServiceProviderDashboard() {
                           <p className="text-sm font-medium">{day.slice(0, 3)}</p>
                           <p className={`text-xs mt-1 ${isWorkingDay ? "text-blue-700" : "text-gray-500"}`}>
                             {isWorkingDay 
-                              ? `${mockServiceProvider.availability.workingHours.start} - ${mockServiceProvider.availability.workingHours.end}`
+                              ? `${mockServiceProvider?.availability?.workingHours?.start} - ${mockServiceProvider?.availability?.workingHours?.end}`
                               : "Off day"}
                           </p>
                         </div>
@@ -657,15 +679,15 @@ export default function ServiceProviderDashboard() {
                 <CardContent className="space-y-4">
                   <div>
                     <h4 className="text-sm font-medium text-gray-500">Account Holder</h4>
-                    <p className="mt-1">{mockServiceProvider.bankDetails.accountHolderName}</p>
+                    <p className="mt-1">{mockServiceProvider?.bankDetails.accountHolderName}</p>
                   </div>
                   <div>
                     <h4 className="text-sm font-medium text-gray-500">Account Number</h4>
-                    <p className="mt-1">{mockServiceProvider.bankDetails.accountNumber}</p>
+                    <p className="mt-1">{mockServiceProvider?.bankDetails.accountNumber}</p>
                   </div>
                   <div>
                     <h4 className="text-sm font-medium text-gray-500">Bank Name</h4>
-                    <p className="mt-1">{mockServiceProvider.bankDetails.bankName}</p>
+                    <p className="mt-1">{mockServiceProvider?.bankDetails.bankName}</p>
                   </div>
                 </CardContent>
               </Card>

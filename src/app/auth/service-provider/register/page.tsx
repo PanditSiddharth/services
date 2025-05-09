@@ -20,6 +20,7 @@ import { toast } from "react-toastify"
 import { registerProvider } from "@/app/actions/auth"
 import { getServices } from "@/app/actions/services"
 import { signIn } from "next-auth/react"
+import { uploadImage } from "@/app/actions/cloudinary"
 
 // Updated schema to match MongoDB model
 const formSchema = z.object({
@@ -133,12 +134,17 @@ export default function ProviderRegisterPage() {
       //     branch: values["bankDetails.branch"],
       //   },
       // }
-      const data = JSON.stringify({...values, 
+
+      // const image = "https://res.cloudinary.com/panditsiddharth/image/upload/v1746615171/services-app/d3zbbp2pwlvuzl8hsadz.jpg"
+      const image =  await uploadImage(profileImage)
+      const data = JSON.stringify({
+        ...values,
         role: "serviceProvider",
-        profileImage: "/profile-image.jpg" })
+        profileImage: image || "/profile-image.jpg"
+      })
       // Create FormData object
       const formData = new FormData()
-  
+
       // Add profile image if it's not the default
       if (profileImage && profileImage !== "/profile-image.jpg") {
         formData.append("profileImage", profileImage)
@@ -150,20 +156,17 @@ export default function ProviderRegisterPage() {
       //   setIsSubmitting(false)
       //   return
       // }
-      const result = await signIn("credentials", { 
-        email: values.email,
-        password: values.password,
-        name: values.name,
-        role: "serviceProvider",
-        id: "sfds"
-        , redirect: false });
-  if (result?.error) {
-    console.error("Sign-in failed:", result.error);
-  } else {
-    console.log("Sign-in successful:", result);
-  }
+      const result = await signIn("credentials", {
+        data
+        , redirect: false
+      });
+      if (result?.error) {
+        console.error("Sign-in failed:", result.error);
+      } else {
+        console.log("Sign-in successful:", result);
+      }
       // toast.success(response.message || "Your service provider account has been created. Please log in.")
-      // router.push("/auth/service-provider/login")
+      router.push("/service-provider")
     } catch (error) {
       toast.error("There was an error creating your account. Please try again.")
     } finally {
@@ -228,10 +231,10 @@ export default function ProviderRegisterPage() {
         console.error("Failed to fetch services:", error);
       }
     };
-  
+
     fetchServiceTypes();
   }, []); // Empty dependency array ensures this runs only once
-  
+
   // Days of the week for availability
   const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 

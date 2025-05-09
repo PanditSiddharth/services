@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs"
 import { signIn, signOut } from "next-auth/react"
 import connectDB from "@/lib/db-connect"
 import { User, ServiceProvider } from "@/models/index"
-import { uploadImage } from "@/lib/cloudinary"
+import { uploadImage } from "@/app/actions/cloudinary"
 import { generateOTP, storeOTP, verifyOTP as checkOTP, sendOTP } from "@/lib/otp"
 import { serviceProviderRegisterSchema, userRegisterSchema, loginSchema } from "@/models/zod"
 

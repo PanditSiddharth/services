@@ -27,7 +27,7 @@ const ServiceSchema = z.object({
 
 // Create service
 export async function createService(formData: FormData) {
-
+  
   const validatedFields = ServiceSchema.safeParse({
     name: formData.get("name"),
     slug: formData.get("name")?.toString().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") || "service",

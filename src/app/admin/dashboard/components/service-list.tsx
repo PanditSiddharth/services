@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { InfiniteScrollList } from "./infinite-scroll-list"
+import { InfiniteScrollList } from "../../../../components/infinite-scroll-list"
 import { Badge } from "@/components/ui/badge"
 import { MoreHorizontal, Edit, Trash, Plus, Eye } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"

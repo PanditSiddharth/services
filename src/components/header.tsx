@@ -5,8 +5,7 @@ import { usePathname } from "next/navigation"
 import { Menu, X, User, Settings, LogOut } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { useAuth } from "@/hooks/use-auth"
-import {  } from "@/components/logout-button"
+import { LogoutButton } from "@/components/logout-button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,11 +13,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useSession } from "next-auth/react"
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const pathname = usePathname()
-  const { isAuthenticated, isUser, isProvider, session } = useAuth()
+  const { data: session }:any = useSession()
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen)
@@ -69,7 +69,7 @@ export function Header() {
               Contact
             </Link>
 
-            {isAuthenticated ? (
+            {(session?.user as any)?.email ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -87,13 +87,13 @@ export function Header() {
                   </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href={isUser ? "/user/dashboard" : "/admin/dashboard"}>
+                    <Link href={session?.user?.role != "serviceProvider" ? "/user/dashboard" : "/admin/dashboard"}>
                       <User className="mr-2 h-4 w-4" />
                       <span>Dashboard</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href={isUser ? "/user/profile" : "/admin/profile"}>
+                    <Link href={session?.user?.role != "serviceProvider" ? "/user/profile" : "/admin/profile"}>
                       <Settings className="mr-2 h-4 w-4" />
                       <span>Settings</span>
                     </Link>
@@ -163,13 +163,13 @@ export function Header() {
                 Contact
               </Link>
 
-              {isAuthenticated ? (
+              {session?.user?.email ? (
                 <>
                   <div className="py-2 border-t">
                     <div className="flex items-center space-x-3">
                       <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
                         <span className="text-sm font-medium text-primary">
-                          {session?.user?.name?.charAt(0) || "U"}
+                          {(session as any)?.user?.name?.charAt(0) || "U"}
                         </span>
                       </div>
                       <div>
@@ -179,14 +179,14 @@ export function Header() {
                     </div>
                   </div>
                   <Link
-                    href={isUser ? "/user/dashboard" : "/admin/dashboard"}
+                    href={session?.user?.role != "serviceProvider" ? "/user/dashboard" : "/admin/dashboard"}
                     onClick={closeMenu}
                     className="text-sm font-medium text-gray-600 hover:text-primary"
                   >
                     Dashboard
                   </Link>
                   <Link
-                    href={isUser ? "/user/profile" : "/admin/profile"}
+                    href={session?.user?.role != "serviceProvider" ? "/user/profile" : "/admin/profile"}
                     onClick={closeMenu}
                     className="text-sm font-medium text-gray-600 hover:text-primary"
                   >

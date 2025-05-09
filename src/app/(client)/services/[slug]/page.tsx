@@ -45,8 +45,8 @@ export default async function ServiceDetailsPage({ params }: { params: { slug: s
           <div className="mb-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="bg-primary/10 p-3 rounded-md">
-                {Icons[(service as any).icon as "Wrench"] ? (
-                  Icons[(service as any).icon as "Wrench"]({ className: "h-6 w-6" })
+                {Icons[(service.icon || "Wrench") as keyof typeof Icons] ? (
+                  Icons[(service.icon || "Wrench") as keyof typeof Icons]({ className: "h-6 w-6" })
                 ) : (
                   <Icons.Wrench className="h-6 w-6" />
                 )}
@@ -87,7 +87,7 @@ export default async function ServiceDetailsPage({ params }: { params: { slug: s
               <CardTitle>Service Options</CardTitle>
             </CardHeader>
             <CardContent>
-              {service.subServices.length === 0 ? (
+              {!service.subServices?.length ? (
                 <p className="text-muted-foreground">
                   Please contact us for pricing and availability.
                 </p>
@@ -95,7 +95,7 @@ export default async function ServiceDetailsPage({ params }: { params: { slug: s
                 <div className="space-y-4">
                   {service.subServices.map((subService:any) => (
                     <div
-                      key={subService._id}
+                      key={subService._id || subService.id}
                       className="border rounded-lg p-4 hover:border-primary transition-colors"
                     >
                       <div className="flex justify-between items-start mb-2">

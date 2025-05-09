@@ -11,6 +11,7 @@ interface LogoutButtonProps {
   variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"
   showIcon?: boolean
   children?: any
+  [key: string]: any
 }
 
 export function LogoutButton({ variant = "ghost", showIcon = true, children, ...props }: LogoutButtonProps) {

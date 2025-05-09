@@ -2,7 +2,7 @@
 
 import { format } from "date-fns"
 import { getServiceProviders } from "@/app/actions/admin"
-import { InfiniteScrollList } from "./infinite-scroll-list"
+import { InfiniteScrollList } from "../../../../components/infinite-scroll-list"
 import { Badge } from "@/components/ui/badge"
 import { MoreHorizontal, Phone, Mail } from "lucide-react"
 import { ServiceProviderType, ServiceType } from "@/models/types"

@@ -32,7 +32,7 @@ export default async function ServicesPage() {
       ) : (
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
           {activeServices.map((service:any) => (
-            <Card key={service._id} className="overflow-hidden flex flex-col h-full">
+            <Card key={service._id || service.id} className="overflow-hidden flex flex-col h-full">
               <div className="relative w-full h-48">
                 <Image
                   src={service.image || "/placeholder.svg"}
@@ -43,10 +43,9 @@ export default async function ServicesPage() {
               </div>
               <CardHeader className="pb-2">
                 <div className="flex items-center gap-2">
-                  {/* Render icon dynamically based on service.icon */}
                   <div className="bg-primary/10 p-2 rounded-md">
-                    {Icons[(service as any).icon as "Wrench"] ? (
-                      Icons[(service as any).icon as "Wrench"]({ className: "h-5 w-5" })
+                    {Icons[(service.icon || "Wrench") as keyof typeof Icons] ? (
+                      Icons[(service.icon || "Wrench") as keyof typeof Icons]({ className: "h-5 w-5" })
                     ) : (
                       <Icons.Wrench className="h-5 w-5" />
                     )}
@@ -60,16 +59,24 @@ export default async function ServicesPage() {
                 </CardDescription>
                 <div className="mt-4">
                   <p className="text-sm font-medium">
-                    {service.subServices.length} service options available
+                    {service.subServices?.length || 0} service options available
                   </p>
                 </div>
               </CardContent>
-              <CardFooter>
-                <Link href={`/services/${service.slug}`} className="w-full">
-                  <Button variant="outline" className="w-full">
+              <CardFooter className="flex gap-2">
+                <Button asChild variant="outline" className="w-1/2">
+                  <Link href={`/services/${service.slug}`}>
                     View Details
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
+                <Button asChild className="w-1/2">
+                  <Link 
+                    href={`/providers?service=${service._id}`}
+                    className="flex items-center justify-center"
+                  >
+                    Find Providers
+                  </Link>
+                </Button>
               </CardFooter>
             </Card>
           ))}

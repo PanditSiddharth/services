@@ -1,7 +1,7 @@
 "use client"
 import { useState } from "react"
 import { type Review, getReviews } from "@/app/actions/admin0"
-import { InfiniteScrollList } from "./infinite-scroll-list"
+import { InfiniteScrollList } from "../../../../components/infinite-scroll-list"
 import { MoreHorizontal, Star, Flag, ThumbsDown, Eye } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"

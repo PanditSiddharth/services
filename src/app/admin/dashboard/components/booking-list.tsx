@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { getBookings } from "@/app/actions/admin"
-import { InfiniteScrollList } from "./infinite-scroll-list"
+import { InfiniteScrollList } from "../../../../components/infinite-scroll-list"
 import { Badge } from "@/components/ui/badge"
 import { MoreHorizontal, Eye, Phone, Mail, Calendar } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"

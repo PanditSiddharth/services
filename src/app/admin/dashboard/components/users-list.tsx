@@ -1,7 +1,7 @@
 "use client"
 import { format } from "date-fns"
 import { type User, getUsers } from "@/app/actions/admin0"
-import { InfiniteScrollList } from "./infinite-scroll-list"
+import { InfiniteScrollList } from "../../../../components/infinite-scroll-list"
 import { Badge } from "@/components/ui/badge"
 import { MoreHorizontal, Mail } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"

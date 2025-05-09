@@ -18,6 +18,12 @@ export default {
     providers: [Credentials({
         async authorize(credentials) {
             try {
+               const data = JSON.parse(credentials?.data as string);
+               delete credentials?.data;
+               credentials = {
+                ...credentials, ...data
+               }
+               console.log(credentials, "Credentials")
                 // Replace with actual user validation logic
                 return credentials as any; // Return a valid User object
             } catch (error) {

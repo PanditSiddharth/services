@@ -170,6 +170,29 @@ serviceProviderSchema.methods.isAvailableInLocation = function (userLat: number,
     return distance <= 25;
 };
 
+serviceProviderSchema.virtual('completionRate').get(function() {
+    return this.totalBookings > 0 
+        ? (this.completedBookings / this.totalBookings * 100).toFixed(1) 
+        : 0;
+});
+
+serviceProviderSchema.methods.updateStats = async function(bookingStatus) {
+    if (bookingStatus === 'completed') {
+        this.completedBookings += 1;
+    }
+    this.totalBookings += 1;
+    await this.save();
+};
+
+serviceProviderSchema.methods.updateRating = async function(rating) {
+    const newTotalReviews = this.totalReviews + 1;
+    const newRating = ((this.rating * this.totalReviews) + rating) / newTotalReviews;
+    
+    this.rating = Number(newRating.toFixed(1));
+    this.totalReviews = newTotalReviews;
+    await this.save();
+};
+
 const ServiceProvider = mongoose.models?.ServiceProvider || mongoose.model("ServiceProvider", serviceProviderSchema)
 
 export default ServiceProvider;

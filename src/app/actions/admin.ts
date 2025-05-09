@@ -93,7 +93,7 @@ export type User = {
 // Server actions to fetch paginated data from MongoDB
 export async function getUsers(page = 1, limit = 10, search = "") {
     try {
-      dbConnect()
+      await dbConnect()
       // Validate and sanitize inputs
       const pageNum = Math.max(1, Number(page));
       const limitNum = Math.max(1, Math.min(100, Number(limit))); // Cap at 100 for performance
@@ -171,76 +171,131 @@ export async function getUsers(page = 1, limit = 10, search = "") {
       throw new Error('Failed to fetch users due to an unknown error');
     }
   }
-export async function getServiceProviders(page = 1, limit = 10, search = "") {
-    try {
-      dbConnect()
-      // Build search query
-      let query = {};
-      if (search) {
-        query = {
-          $or: [
-            { name: { $regex: search, $options: 'i' } },
-            { email: { $regex: search, $options: 'i' } },
-            { phone: { $regex: search, $options: 'i' } },
-            { 'address.city': { $regex: search, $options: 'i' } },
-            { 'address.state': { $regex: search, $options: 'i' } }
-          ]
-        };
-      }
-  
-      // Count total matching documents for pagination
-      const totalCount = await ServiceProvider.countDocuments(query);
-      
-      // Calculate pagination
-      const skip = (page - 1) * limit;
-      const hasMore = skip + limit < totalCount;
-      
-      // Fetch providers
-      const providers = await ServiceProvider.find(query)
-        .populate('profession')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean();
-      
-      // Map MongoDB documents to the expected format
-      const formattedProviders = providers.map(provider => ({
-        id: provider?._id?.toString(),
-        name: provider.name,
-        email: provider.email,
-        phone: provider.phone,
-        profileImage: provider.profileImage,
-        profession: provider.profession?.name || '',
-        professionId: provider.profession?._id?.toString(),
-        experience: provider.experience,
-        address: {
-          city: provider.address?.city || '',
-          state: provider.address?.state || '',
-          pincode: provider.address?.pincode || ''
-        },
-        isAvailable: provider.availability?.isAvailable || false,
-        isVerified: provider.isVerified,
-        isActive: provider.isActive,
-        rating: provider.rating,
-        totalReviews: provider.totalReviews,
-        totalBookings: provider.totalBookings,
-        completedBookings: provider.completedBookings,
-        createdAt: provider.createdAt.toISOString()
-      }));
-      
-      return {
-        providers: formattedProviders,
-        hasMore
-      };
-    } catch (error) {
-      console.error('Error fetching service providers:', error);
-      throw new Error('Failed to fetch service providers');
+
+export async function getServiceProviders(
+  page = 1, 
+  limit = 10, 
+  search = "", 
+  options: { 
+    sortBy?: string, 
+    filterBy?: string 
+  } = {}
+) {
+  try {
+    await dbConnect()
+    
+    // Build base query
+    const query: any = {};
+    
+    // Add search filter
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { phone: { $regex: search, $options: 'i' } },
+        { 'address.city': { $regex: search, $options: 'i' } },
+        { 'address.state': { $regex: search, $options: 'i' } }
+      ];
     }
+
+    // Add service type filter
+    if (options.filterBy && options.filterBy !== 'all') {
+      const service = await Service.findOne({ 
+        slug: options.filterBy.toLowerCase()
+      });
+      if (service) {
+        query.profession = service._id;
+      }
+    }
+
+    // Determine sort options
+    let sort: any = { createdAt: -1 }; // default sort
+    switch (options.sortBy) {
+      case 'rating':
+        sort = { rating: -1 };
+        break;
+      case 'experience':
+        sort = { experience: -1 };
+        break;
+      case 'reviews':
+        sort = { totalReviews: -1 };
+        break;
+      case 'bookings':
+        sort = { totalBookings: -1 };
+        break;
+    }
+
+    // Calculate pagination
+    const skip = (page - 1) * limit;
+    
+    // Use distinct and aggregation to ensure unique results
+    const pipeline = [
+      { $match: query },
+      { $sort: sort },
+      { $skip: skip },
+      { $limit: limit },
+      {
+        $lookup: {
+          from: 'services',
+          localField: 'profession',
+          foreignField: '_id',
+          as: 'professionDetails'
+        }
+      },
+      {
+        $addFields: {
+          profession: { $arrayElemAt: ['$professionDetails.name', 0] }
+        }
+      },
+      {
+        $project: {
+          professionDetails: 0,
+          password: 0,
+          __v: 0
+        }
+      }
+    ];
+
+    // Execute aggregation
+    const providers = await ServiceProvider.aggregate(pipeline);
+    const totalCount = await ServiceProvider.countDocuments(query);
+    
+    const hasMore = skip + providers.length < totalCount;
+    
+    // Format the response with unique entries
+    const formattedProviders = providers.map(provider => ({
+      _id: provider._id.toString(),
+      name: provider.name,
+      email: provider.email,
+      phone: provider.phone,
+      profileImage: provider.profileImage,
+      profession: provider.profession || '',
+      experience: provider.experience,
+      address: provider.address,
+      isAvailable: provider.availability?.isAvailable || false,
+      isVerified: provider.isVerified,
+      isActive: provider.isActive,
+      rating: provider.rating,
+      totalReviews: provider.totalReviews,
+      totalBookings: provider.totalBookings,
+      completedBookings: provider.completedBookings,
+      createdAt: provider.createdAt.toISOString()
+    }));
+    
+    return {
+      providers: formattedProviders,
+      hasMore
+    };
+
+  } catch (error) {
+    console.error('Error fetching service providers:', error);
+    throw new Error('Failed to fetch service providers');
   }
+}
 
   export async function getServices(page = 1, limit = 10, search = "") {
     try {
-      dbConnect()
+     await dbConnect()
       // Build search query
       let query = {};
       if (search) {
@@ -300,7 +355,7 @@ export async function getServiceProviders(page = 1, limit = 10, search = "") {
 
 export async function getBookings(page = 1, limit = 10, search = "", status?: string) {
     try {
-      dbConnect()
+      await dbConnect()
       // Build query
       const query: any = {};
       
@@ -378,7 +433,7 @@ export async function getBookings(page = 1, limit = 10, search = "", status?: st
 
 export async function getReviews(page = 1, limit = 10, search = "", minRating?: number) {
     try {
-      dbConnect()
+      await dbConnect()
       // Convert params to appropriate types
       const pageNum = Math.max(1, Number(page));
       const limitNum = Math.max(1, Math.min(100, Number(limit))); // Cap at 100 for performance
@@ -396,7 +451,7 @@ export async function getReviews(page = 1, limit = 10, search = "", minRating?: 
       if (search && typeof search === 'string' && search.trim()) {
         // Search across referenced document fields requires proper population
         query.$or = [
-          { comment: { $regex: search, $options: 'i' } } // Direct field in review schema
+          { comment: { $regex: search, $options: 'i' } }// Direct field in review schema
         ];
       }
   

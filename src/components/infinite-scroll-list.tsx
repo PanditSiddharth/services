@@ -1,9 +1,9 @@
 "use client"
 
 import type React from "react"
-
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { Loader2 } from "lucide-react"
+import InfiniteScroll from "react-infinite-scroll-component"
 
 interface InfiniteScrollListProps<T> {
   fetchData: (page: number, search: string) => Promise<{ data: T[]; hasMore: boolean }>
@@ -28,8 +28,6 @@ export function InfiniteScrollList<T extends { id: string }>({
   const [hasMore, setHasMore] = useState(initialHasMore)
   const [search, setSearch] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
-  const observer = useRef<IntersectionObserver | null>(null)
-  const lastItemRef = useRef<HTMLDivElement | null>(null)
 
   // Handle search debounce
   useEffect(() => {
@@ -60,48 +58,22 @@ export function InfiniteScrollList<T extends { id: string }>({
     loadInitialData()
   }, [debouncedSearch, fetchData])
 
-  // Set up intersection observer for infinite scrolling
-  useEffect(() => {
-    if (loading || !hasMore) return
-
-    if (observer.current) observer.current.disconnect()
-
-    observer.current = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting && hasMore && !loading) {
-        setPage((prevPage) => prevPage + 1)
-      }
-    })
-
-    if (lastItemRef.current) {
-      observer.current.observe(lastItemRef.current)
+  const loadMoreData = async () => {
+    if (loading) return
+    
+    setLoading(true)
+    try {
+      const nextPage = page + 1
+      const result = await fetchData(nextPage, debouncedSearch)
+      setItems((prevItems) => [...prevItems, ...result.data])
+      setHasMore(result.hasMore)
+      setPage(nextPage)
+    } catch (error) {
+      console.error("Error loading more data:", error)
+    } finally {
+      setLoading(false)
     }
-
-    return () => {
-      if (observer.current) {
-        observer.current.disconnect()
-      }
-    }
-  }, [loading, hasMore, items])
-
-  // Load more data when page changes
-  useEffect(() => {
-    if (page === 1) return
-
-    const loadMoreData = async () => {
-      setLoading(true)
-      try {
-        const result = await fetchData(page, debouncedSearch)
-        setItems((prevItems) => [...prevItems, ...result.data])
-        setHasMore(result.hasMore)
-      } catch (error) {
-        console.error("Error loading more data:", error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadMoreData()
-  }, [page, fetchData, debouncedSearch])
+  }
 
   return (
     <div className="space-y-4">
@@ -118,20 +90,28 @@ export function InfiniteScrollList<T extends { id: string }>({
       {items.length === 0 && !loading ? (
         <div className="text-center py-8 text-gray-500">{emptyMessage}</div>
       ) : (
-        <div className="space-y-2">
-          {items.map((item, index) => (
+        <InfiniteScroll
+          dataLength={items.length}
+          next={loadMoreData}
+          hasMore={hasMore}
+          loader={
+            <div className="flex justify-center py-4">
+              <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+            </div>
+          }
+          endMessage={
+            <p className="text-center py-4 text-gray-500">
+              You have seen all items
+            </p>
+          }
+          className="space-y-2"
+        >
+          {items.map((item) => (
             <div key={item.id} className="transition-all duration-200 hover:bg-gray-50">
               {renderItem(item)}
             </div>
           ))}
-          <div ref={lastItemRef} className="h-4" />
-        </div>
-      )}
-
-      {loading && (
-        <div className="flex justify-center py-4">
-          <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
-        </div>
+        </InfiniteScroll>
       )}
     </div>
   )
