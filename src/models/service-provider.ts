@@ -1,4 +1,50 @@
-import mongoose from "mongoose";
+import mongoose from "mongoose"
+
+export interface ServiceProviderType {
+  _id?: string;
+  name: string;
+  email: string;
+  password: string;
+  phone: string;
+  profileImage: string;
+  profession: string | any;
+  experience: number;
+  address: {
+    street?: string;
+    city: string;
+    state: string;
+    pincode: string;
+    landmark?: string;
+  };
+  coordinates?: [number, number];
+  availability: {
+    isAvailable: boolean;
+    workingDays: string[];
+    workingHours: {
+      start: string;
+      end: string;
+    };
+  };
+  professionalCertificates?: string[];
+  isVerified: boolean;
+  isActive: boolean;
+  rating: number;
+  totalReviews: number;
+  totalBookings: number;
+  completedBookings: number;
+  bookings?: string[] | any[];
+  reviews?: string[] | any[];
+  bankDetails: {
+    accountHolderName?: string;
+    accountNumber?: string;
+    ifscCode?: string;
+    bankName?: string;
+    branch?: string;
+  };
+  role?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
 
 const serviceProviderSchema = new mongoose.Schema(
     {

@@ -1,5 +1,28 @@
 import mongoose, { Model } from "mongoose";
 
+export interface UserType {
+  _id?: string;
+  name: string;
+  email?: string;
+  password?: string;
+  phone: string;
+  isPhoneVerified?: boolean;
+  isEmailVerified?: boolean;
+  isActive?: boolean;
+  profileImage?: string;
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+    landmark?: string;
+  };
+  bookings?: string[] | any[];
+  role?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 // Define the interface for the User document
 interface IUser {
   name?: string;

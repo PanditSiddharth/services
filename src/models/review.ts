@@ -1,5 +1,17 @@
 import mongoose from "mongoose"
 
+export interface ReviewType {
+  _id?: string;
+  user: string | any;
+  serviceProvider: string | any;
+  booking: string | any;
+  service: string | any;
+  rating: number;
+  comment: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 const reviewSchema = new mongoose.Schema(
   {
     user: {

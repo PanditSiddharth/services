@@ -1,11 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { LogOut, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { logout } from "@/app/actions/auth"
 import { toast } from "react-toastify"
+import { deleteCookie } from "cookies-next"
 
 interface LogoutButtonProps {
   variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"
@@ -16,15 +15,24 @@ interface LogoutButtonProps {
 
 export function LogoutButton({ variant = "ghost", showIcon = true, children, ...props }: LogoutButtonProps) {
   const [isLoading, setIsLoading] = useState(false)
-  const router = useRouter()
 
   async function handleLogout() {
     setIsLoading(true)
     try {
-      await logout()
-      router.push("/")
-      router.refresh()
+      deleteCookie('user', { 
+        path: '/',
+        domain: process.env.NODE_ENV === "production" ? ".ignoux.in" : undefined
+      });
+      
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Use window.location for a full page refresh
+      window.location.href = "/auth";
+      
+      toast.success("Logged out successfully")
     } catch (error) {
+      console.error("Logout error:", error)
       toast.error("Failed to log out. Please try again.")
     } finally {
       setIsLoading(false)
@@ -32,7 +40,7 @@ export function LogoutButton({ variant = "ghost", showIcon = true, children, ...
   }
 
   return (
-    <Button variant={variant} onClick={handleLogout} disabled={isLoading} {...props}>
+    <button onClick={handleLogout} disabled={isLoading} {...props}>
       {isLoading ? (
         <Loader2 className="h-4 w-4 animate-spin" />
       ) : (
@@ -41,6 +49,6 @@ export function LogoutButton({ variant = "ghost", showIcon = true, children, ...
           {children || "Logout"}
         </>
       )}
-    </Button>
+    </button>
   )
 }

@@ -1,5 +1,27 @@
 import mongoose from "mongoose"
 
+export interface SubServiceType {
+  _id?: string;
+  name: string;
+  description?: string;
+  basePrice: number;
+  priceUnit: "hour" | "day" | "job";
+}
+
+export interface ServiceType {
+  _id?: string;
+  name: string;
+  slug: string;
+  description: string;
+  icon: string;
+  image: string;
+  isActive: boolean;
+  subServices: SubServiceType[];
+  providers?: string[] | any[];
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 const serviceSchema = new mongoose.Schema(
   {
     name: {

@@ -5,22 +5,36 @@ import { ServiceProvider, User } from "@/models"
 import mongoose from "mongoose"
 
 export async function getUser({ email, role, populate = false }: { email: string; role: string; populate?: boolean }) {
-  await connectDB();
+  try {
+    await connectDB();
 
-  const Model:any = role === "serviceProvider" ? ServiceProvider : User;
-  let query:any = Model.findOne({ email });
-  
-  if (populate) {
-    query = await query.populate('profession', 'name');
-  }
+    const Model = role === "serviceProvider" ? ServiceProvider : User;
+    let query = (Model as any).findOne({ email });
+    
+    if (populate) {
+      query = query.populate('profession', 'name');
+    }
 
+    // Use lean() to get plain JavaScript object
+    const user = await query.lean();
 
-  if (!query) {
+    if (!user) return null;
+
+    // Convert _id to string and clean up the object
+    const cleanUser = {
+      ...user,
+      _id: user._id.toString(),
+      id: user._id.toString()
+    };
+
+    // Remove Mongoose-specific fields
+    delete cleanUser.__v;
+    
+    return cleanUser;
+  } catch (error) {
+    console.error("Get user error:", error);
     return null;
   }
-
-  // Serialize the document
-  return JSON.parse(JSON.stringify(query));
 }
 
 type UserData = {

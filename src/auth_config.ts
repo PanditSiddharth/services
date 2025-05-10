@@ -23,7 +23,6 @@ export default {
                credentials = {
                 ...credentials, ...data
                }
-               console.log(credentials, "Credentials")
                 // Replace with actual user validation logic
                 return credentials as any; // Return a valid User object
             } catch (error) {

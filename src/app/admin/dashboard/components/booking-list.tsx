@@ -10,55 +10,10 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { format } from "date-fns"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-
-// Updated interface to match the MongoDB model
-interface BookingType {
-  _id: string
-  user: {
-    _id: string
-    name: string
-  }
-  serviceProvider: {
-    _id: string
-    name: string
-  }
-  service: {
-    _id: string
-    name: string
-  }
-  subService: {
-    name: string
-    price: number
-    priceUnit: "hour" | "day" | "job"
-  }
-  bookingDate: string
-  address: {
-    street?: string
-    city: string
-    state: string
-    pincode: string
-    landmark?: string
-    coordinates?: number[]
-  }
-  description: string
-  status: "pending" | "confirmed" | "in-progress" | "completed" | "cancelled" | "no-show"
-  paymentStatus: "pending" | "partial" | "completed" | "refunded"
-  paymentMethod: "cash" | "online" | "wallet"
-  estimatedPrice: number
-  finalPrice?: number
-  serviceStartTime?: string
-  serviceEndTime?: string
-  totalHours?: number
-  cancellationReason?: string
-  cancelledBy?: "user" | "provider" | "admin"
-  isReviewed: boolean
-  review?: string
-  createdAt: string
-  updatedAt: string
-}
+import type { Booking } from "@/types"
 
 interface BookingListProps {
-  initialBookings: BookingType[]
+  initialBookings: Booking[]
   initialHasMore: boolean
 }
 
@@ -67,7 +22,7 @@ export function BookingList({ initialBookings, initialHasMore }: BookingListProp
 
   const fetchBookings = async (page: number, search: string) => {
     const { bookings, hasMore } = await getBookings(page, 10, search, statusFilter !== "all" ? statusFilter : undefined)
-    return { data: bookings, hasMore }
+    return { data: bookings.map(booking => {console.log(booking.id); return{ ...booking, id: (booking as any)?.id }}), hasMore }
   }
 
   const getStatusColor = (status: string) => {
@@ -101,7 +56,7 @@ export function BookingList({ initialBookings, initialHasMore }: BookingListProp
     }
   }
 
-  const renderBooking = (booking: BookingType) => (
+  const renderBooking = (booking: Booking & { id: string }) => (
     <Card className="p-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

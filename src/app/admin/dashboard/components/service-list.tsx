@@ -131,7 +131,9 @@ export function ServiceList({ initialServices, initialHasMore }: ServiceListProp
           <h4 className="font-medium mb-2">Sub-Services ({service?.subServices?.length})</h4>
           <div className="space-y-2">
             {service.subServices.map((subService) => (
-              <div key={subService.name} className="bg-white p-3 rounded border">
+              
+              <div key={(subService as any).id} className="bg-white p-3 rounded border">
+              
                 <div className="flex justify-between items-center">
                   <div>
                     <h5 className="font-medium">{subService.name}</h5>

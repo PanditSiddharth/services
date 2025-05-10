@@ -14,11 +14,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useSession } from "next-auth/react"
+import { deleteCookie } from "cookies-next/client"
+import { signOut } from "@/auth"
+import { useRouter } from "next/navigation"
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const pathname = usePathname()
   const { data: session }:any = useSession()
+  const router = useRouter()
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen)
@@ -27,6 +31,23 @@ export function Header() {
   const closeMenu = () => {
     setIsMenuOpen(false)
   }
+
+  const handleLogout = async () => {
+    try {
+      deleteCookie('user', { 
+        path: '/',
+        domain: process.env.NODE_ENV === "production" ? ".ignoux.in" : undefined
+      });
+      
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Use window.location for a full page refresh
+      window.location.href = "/auth";
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
 
   return (
     <header className="bg-white shadow-sm">
@@ -99,11 +120,14 @@ export function Header() {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <LogoutButton className="w-full justify-start" variant="ghost">
+                  <DropdownMenuItem>
+                    <button 
+                      onClick={e=> signOut()}
+                      className="w-full flex items-center"
+                    >
                       <LogOut className="mr-2 h-4 w-4" />
                       <span>Log out</span>
-                    </LogoutButton>
+                    </button>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

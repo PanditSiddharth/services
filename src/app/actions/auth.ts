@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation"
 import bcrypt from "bcryptjs"
-import { signIn, signOut } from "next-auth/react"
+import { signIn } from "next-auth/react"
 import connectDB from "@/lib/db-connect"
 import { User, ServiceProvider } from "@/models/index"
 import { uploadImage } from "@/app/actions/cloudinary"
@@ -314,9 +314,4 @@ export async function verifyOTP(formData: FormData) {
       },
     }
   }
-}
-
-export async function logout() {
-  await signOut({ redirect: false })
-  redirect("/")
 }

@@ -514,3 +514,162 @@ export async function getReviews(page = 1, limit = 10, search = "", minRating?: 
     }
   }
 
+// Get real dashboard statistics
+export async function getDashboardStats() {
+  try {
+    await dbConnect()
+    
+    // Total counts
+    const totalUsers = await User.countDocuments()
+    const activeUsers = await User.countDocuments({ isActive: true })
+    
+    const totalProviders = await ServiceProvider.countDocuments()
+    const activeProviders = await ServiceProvider.countDocuments({ isActive: true })
+    const verifiedProviders = await ServiceProvider.countDocuments({ isVerified: true })
+    
+    const totalServices = await Service.countDocuments()
+    const activeServices = await Service.countDocuments({ isActive: true })
+    const totalSubServices = await Service.aggregate([
+      { $unwind: "$subServices" },
+      { $count: "total" }
+    ]).then(result => result[0]?.total || 0)
+
+    const totalBookings = await Booking.countDocuments()
+    const pendingBookings = await Booking.countDocuments({ status: "pending" })
+    const completedBookings = await Booking.countDocuments({ status: "completed" })
+    const cancelledBookings = await Booking.countDocuments({ 
+      status: { $in: ["cancelled", "no-show"] } 
+    })
+
+    // Financial stats
+    const financialStats = await Booking.aggregate([
+      { $match: { status: "completed" } },
+      { 
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: "$finalPrice" },
+          totalOrders: { $sum: 1 }
+        }
+      }
+    ]).then(result => result[0] || { totalRevenue: 0, totalOrders: 0 })
+
+    // Reviews stats
+    const reviewStats = await Review.aggregate([
+      {
+        $group: {
+          _id: null,
+          averageRating: { $avg: "$rating" },
+          totalReviews: { $sum: 1 }
+        }
+      }
+    ]).then(result => result[0] || { averageRating: 0, totalReviews: 0 })
+
+    // Recent bookings
+    const recentBookings = await Booking.find()
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .populate('user', 'name')
+      .populate('serviceProvider', 'name')
+      .populate('service', 'name')
+      .lean()
+
+    // Recent reviews
+    const recentReviews = await Review.find()
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .populate('user', 'name')
+      .populate('serviceProvider', 'name')
+      .populate('service', 'name')
+      .lean()
+
+    // Service distribution
+    const serviceDistribution = await Service.aggregate([
+      {
+        $project: {
+          name: 1,
+          subServicesCount: { $size: "$subServices" },
+          providersCount: { $size: "$providers" }
+        }
+      }
+    ])
+
+    // Monthly booking trends (last 6 months)
+    const sixMonthsAgo = new Date()
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+    
+    const monthlyBookings = await Booking.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: sixMonthsAgo }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: "$createdAt" },
+            month: { $month: "$createdAt" }
+          },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { "_id.year": 1, "_id.month": 1 }
+      }
+    ]).then(results => {
+      // Convert to required format
+      return results.map(item => ({
+        month: new Date(item._id.year, item._id.month - 1)
+          .toLocaleString('default', { month: 'short' }),
+        count: item.count
+      }))
+    })
+
+    return {
+      counts: {
+        totalUsers,
+        activeUsers,
+        totalProviders,
+        activeProviders,
+        verifiedProviders,
+        totalServices,
+        activeServices,
+        totalSubServices,
+        totalBookings,
+        pendingBookings,
+        completedBookings,
+        cancelledBookings,
+      },
+      financial: {
+        totalRevenue: financialStats.totalRevenue,
+        averageOrderValue: financialStats.totalOrders > 0 
+          ? financialStats.totalRevenue / financialStats.totalOrders 
+          : 0
+      },
+      satisfaction: {
+        averageRating: reviewStats.averageRating || 0,
+        totalReviews: reviewStats.totalReviews
+      },
+      recent: {
+        bookings: recentBookings.map(booking => ({
+          ...booking,
+          userName: booking.user.name,
+          providerName: booking.serviceProvider.name,
+          serviceName: booking.service.name
+        })),
+        reviews: recentReviews.map(review => ({
+          ...review,
+          userName: review.user.name,
+          providerName: review.serviceProvider.name,
+          serviceName: review.service.name
+        }))
+      },
+      analytics: {
+        serviceDistribution,
+        monthlyBookings
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching dashboard stats:", error)
+    throw new Error("Failed to fetch dashboard statistics")
+  }
+}

@@ -1,29 +1,48 @@
 "use server"
 
+import connectDB from "@/lib/db-connect";
 import { Booking, Review, ServiceProvider } from "@/models"
-import dbConnect from "@/lib/db-connect"
 
 export async function getProviderStats(providerId: string) {
-  await dbConnect()
+  await connectDB();
   
-  const bookings = await Booking.find({ serviceProvider: providerId }).lean()
-  const currentMonth = new Date().getMonth()
-  
-  const stats = {
-    earnings: bookings.reduce((sum, booking) => sum + (booking.finalPrice || booking.estimatedPrice), 0),
-    monthlyEarnings: bookings
-      .filter(booking => new Date(booking.createdAt).getMonth() === currentMonth)
-      .reduce((sum, booking) => sum + (booking.finalPrice || booking.estimatedPrice), 0),
-    totalBookings: bookings.length,
-    completedBookings: bookings.filter(b => b.status === "completed").length,
-    pendingBookings: bookings.filter(b => b.status === "pending").length
+  try {
+    // Get provider's bookings
+    const bookings = await Booking.find({ 
+      serviceProvider: providerId,
+      bookingDate: { $gte: new Date(new Date().setDate(new Date().getDate() - 30)) }
+    })
+    .populate('service', 'name')
+    .populate('subService', 'name price')
+    .populate('user', 'firstName')
+    .sort('-bookingDate');
+
+    // Calculate revenue
+    const completedBookings = bookings.filter(b => b.status === 'completed');
+    const totalRevenue = completedBookings.reduce((sum, b) => sum + (b.finalPrice || b.estimatedPrice), 0);
+
+    // Get provider details including ratings
+    const provider = await ServiceProvider.findById(providerId)
+      .select('rating totalReviews totalBookings completedBookings');
+
+    return {
+      recentBookings: bookings.slice(0, 5),
+      stats: {
+        totalBookings: provider.totalBookings || 0,
+        completedBookings: provider.completedBookings || 0,
+        rating: provider.rating || 0,
+        reviews: provider.totalReviews || 0,
+        revenue: totalRevenue
+      }
+    };
+  } catch (error) {
+    console.error('Error fetching provider stats:', error);
+    throw new Error('Failed to fetch provider statistics');
   }
-  
-  return JSON.parse(JSON.stringify(stats))
 }
 
 export async function getProviderBookings(providerId: string, page = 1, limit = 10) {
-  await dbConnect()
+  await connectDB()
   
   const bookings = await Booking.find({ serviceProvider: providerId })
     .populate('user', 'name')
@@ -37,7 +56,7 @@ export async function getProviderBookings(providerId: string, page = 1, limit = 
 }
 
 export async function getProviderReviews(providerId: string, page = 1, limit = 10) {
-  await dbConnect()
+  await connectDB()
   
   const reviews = await Review.find({ serviceProvider: providerId })
     .populate('user', 'name profileImage')
@@ -51,7 +70,7 @@ export async function getProviderReviews(providerId: string, page = 1, limit = 1
 }
 
 export async function getRevenueData(providerId: string) {
-  await dbConnect()
+  await connectDB()
   
   const sixMonthsAgo = new Date()
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)

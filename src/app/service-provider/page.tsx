@@ -20,6 +20,7 @@ import {
 import { useSession } from "next-auth/react";
 import { getUser } from "../actions/user";
 import Loading from "../user/dashboard/loading";
+import { getProviderStats } from "../actions/provider";
 
 // Mock data for demonstration
 const mockServiceProvider = {
@@ -167,6 +168,60 @@ const StatusBadge = ({ status }: any) => {
 };
 
 export default function ServiceProviderDashboard() {
+  const { data: session } = useSession();
+  interface Booking {
+    _id: string;
+    user: { firstName: string; };
+    service?: { name: string; };
+    subService?: { name: string; };
+    bookingDate: Date;
+    status: string;
+    estimatedPrice: number;
+    finalPrice?: number;
+    address: { city: string; };
+  }
+
+  const [dashboardData, setDashboardData] = useState<{
+    recentBookings: Booking[];
+    stats: {
+      totalBookings: number;
+      completedBookings: number;
+      rating: number;
+      reviews: number;
+      revenue: number;
+    };
+  }>({
+    recentBookings: [],
+    stats: {
+      totalBookings: 0,
+      completedBookings: 0,
+      rating: 0,
+      reviews: 0,
+      revenue: 0
+    }
+  });
+
+  useEffect(() => {
+    if ((session?.user as any)?.id) {
+      if (session && (session.user as any)?.id) {
+        getProviderStats((session.user as any).id)
+          .then((data) => {
+            setDashboardData({
+              recentBookings: data.recentBookings || [],
+              stats: {
+                totalBookings: data.stats?.totalBookings || 0,
+                completedBookings: data.stats?.completedBookings || 0,
+                rating: data.stats?.rating || 0,
+                reviews: data.stats?.reviews || 0,
+                revenue: data.stats?.revenue || 0,
+              },
+            });
+          })
+          .catch(console.error);
+      }
+    }
+  }, [session]);
+
   const mockServiceProvider = useSession().data?.user as any;
 
   useEffect(() => {
@@ -243,7 +298,7 @@ export default function ServiceProviderDashboard() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">₹24,500</div>
+                  <div className="text-2xl font-bold">₹{dashboardData.stats.revenue}</div>
                   <p className="text-xs text-green-500 flex items-center mt-1">
                     <Icons.ChevronRight className="h-4 w-4 -rotate-90" />
                     <span>+12% from last month</span>
@@ -258,9 +313,9 @@ export default function ServiceProviderDashboard() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{mockServiceProvider?.totalBookings}</div>
+                  <div className="text-2xl font-bold">{dashboardData.stats.totalBookings}</div>
                   <p className="text-xs text-gray-500 mt-1">
-                    {mockServiceProvider?.completedBookings} completed
+                    {dashboardData.stats.completedBookings} completed
                   </p>
                 </CardContent>
               </Card>
@@ -273,13 +328,13 @@ export default function ServiceProviderDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold flex items-center">
-                    {mockServiceProvider?.rating}
+                    {dashboardData.stats.rating}
                     <span className="text-yellow-500 ml-1">
                       <Icons.User className="h-5 w-5" />
                     </span>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    {mockServiceProvider?.totalReviews} reviews
+                    {dashboardData.stats.reviews} reviews
                   </p>
                 </CardContent>
               </Card>
@@ -292,7 +347,7 @@ export default function ServiceProviderDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {Math.round((mockServiceProvider?.completedBookings / mockServiceProvider?.totalBookings) * 100)}%
+                    {Math.round((dashboardData.stats.completedBookings / dashboardData.stats.totalBookings) * 100)}%
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
                     Last 30 days
@@ -395,7 +450,7 @@ export default function ServiceProviderDashboard() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {mockBookings.filter(b => b.status !== "completed").map((booking) => (
+                      {dashboardData.recentBookings.filter(b => b.status !== "completed").map((booking) => (
                         <tr key={booking._id}>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium text-gray-900">
@@ -469,7 +524,7 @@ export default function ServiceProviderDashboard() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {mockBookings.map((booking) => (
+                      {dashboardData.recentBookings.map((booking) => (
                         <tr key={booking._id}>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium text-gray-900">

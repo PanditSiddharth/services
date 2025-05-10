@@ -135,22 +135,14 @@ export default function ProviderRegisterPage() {
       //   },
       // }
 
-      // const image = "https://res.cloudinary.com/panditsiddharth/image/upload/v1746615171/services-app/d3zbbp2pwlvuzl8hsadz.jpg"
-      const image =  await uploadImage(profileImage)
+      const image = "https://res.cloudinary.com/panditsiddharth/image/upload/v1746615171/services-app/d3zbbp2pwlvuzl8hsadz.jpg"
+      // const image =  await uploadImage(profileImage)
       const data = JSON.stringify({
         ...values,
         role: "serviceProvider",
         profileImage: image || "/profile-image.jpg"
       })
-      // Create FormData object
-      const formData = new FormData()
-
-      // Add profile image if it's not the default
-      if (profileImage && profileImage !== "/profile-image.jpg") {
-        formData.append("profileImage", profileImage)
-      }
-      // const response = await registerProvider(formData)
-
+ 
       // if (!response.success) {
       //   toast.error(response.message || "Registration failed. Please try again.")
       //   setIsSubmitting(false)
@@ -166,7 +158,7 @@ export default function ProviderRegisterPage() {
         console.log("Sign-in successful:", result);
       }
       // toast.success(response.message || "Your service provider account has been created. Please log in.")
-      router.push("/service-provider")
+      // router.push("/service-provider")
     } catch (error) {
       toast.error("There was an error creating your account. Please try again.")
     } finally {

@@ -1,5 +1,41 @@
 import mongoose from "mongoose"
 
+export interface BookingType {
+  _id?: string;
+  user: string | any;
+  serviceProvider: string | any;
+  service: string | any;
+  subService: {
+    name: string;
+    price: number;
+    priceUnit: "hour" | "day" | "job";
+  };
+  bookingDate: Date;
+  address: {
+    street?: string;
+    city: string;
+    state: string;
+    pincode: string;
+    landmark?: string;
+    coordinates?: [number, number];
+  };
+  description: string;
+  status: "pending" | "confirmed" | "in-progress" | "completed" | "cancelled" | "no-show";
+  paymentStatus: "pending" | "partial" | "completed" | "refunded";
+  paymentMethod: "cash" | "online" | "wallet";
+  estimatedPrice: number;
+  finalPrice?: number;
+  serviceStartTime?: Date;
+  serviceEndTime?: Date;
+  totalHours?: number;
+  cancellationReason?: string;
+  cancelledBy?: "user" | "provider" | "admin";
+  isReviewed: boolean;
+  review?: string | any;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 const bookingSchema = new mongoose.Schema(
   {
     user: {

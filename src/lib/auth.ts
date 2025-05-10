@@ -1,11 +1,9 @@
-import { getServerSession } from "next-auth/next"
-import { authOptions } from "@/lib/auth-options"
 import connectDB from "@/lib/db-connect"
+import { auth } from "@/auth"
 import { User, ServiceProvider } from "@/models/index"
-import { ProviderType } from "next-auth/providers/index"
 
 export async function getSession() {
-  return await getServerSession(authOptions)
+  return await auth() as any
 }
 
 export async function getCurrentUser() {
@@ -32,7 +30,7 @@ export async function getCurrentUser() {
       if (!provider) return null
 
       return {
-        ...provider as ProviderType,
+        ...(provider as any),
         _id: (provider as any)?._id.toString(),
         role: "provider",
       }
@@ -57,7 +55,7 @@ export async function isAdmin() {
 
 export async function isProvider() {
   const session = await getSession()
-  return session?.user?.role === "provider"
+  return session?.user?.role === "serviceProvider"
 }
 
 export async function isUser() {

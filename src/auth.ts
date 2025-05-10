@@ -1,6 +1,5 @@
-// correct it
 import NextAuth, { Session } from "next-auth";
-import auth_config from "./auth_config"; // edit ...
+import auth_config from "./auth_config";
 import { userRegisterSchema } from "@/models/zod";
 import { createOrUpdateUser, getUser } from "./app/actions/user";
 import { log } from "console";
@@ -15,6 +14,24 @@ async function checkExistingUser(email: string): Promise<any> {
 function userFilter(user: any): any {
   return user; // Return the user as-is for now
 }
+
+function sanitizeMongoObject(obj: any) {
+  if (!obj) return obj;
+  const cleaned = JSON.parse(JSON.stringify(obj));
+  if (cleaned._id) {
+    cleaned.id = cleaned._id.toString();
+    delete cleaned._id;
+  }
+  delete cleaned.__v;
+  return cleaned;
+}
+
+function getFilteredUser(user: any) {
+  if (!user) return null;
+  const { name, email, _id, profileImage, role } = user;
+  return {name, email, _id, profileImage, role}
+}
+
 type IUser = typeof userRegisterSchema;
 declare module 'next-auth' {
   interface Session {
@@ -29,47 +46,63 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   callbacks: {
     async signIn({ user }: any) {
-      console.log(user, "User")
-      if (!user || !user.email) {
+      try {
+        if (!user?.email) return false;
+        await dbConnect();
+
+        // Remove non-essential fields before checking/creating user
+        const userToCreate = { ...user };
+        delete userToCreate.csrfToken;
+        delete userToCreate.callbackUrl;
+        delete userToCreate.confirmPassword;
+
+        const existingUser = await getUser({
+          email: user.email,
+          role: user.role,
+          populate: false
+        });
+
+        if (!existingUser && userToCreate.name) {
+          await createOrUpdateUser(userToCreate);
+          return true;
+        }
+
+        return !!existingUser;
+      } catch (error) {
+        console.error("SignIn error:", error);
         return false;
       }
-      await dbConnect()
-      const existingUser = await getUser({
-        email: user.email,
-        role: user?.role
-      });
-
-      if (!existingUser && user.name) {
-        delete user?.id;
-        delete user?.callbackUrl;
-        delete user?.csrfToken;
-        delete user?.confirmPassword;
-        console.log(user, "User")
-        const created = await createOrUpdateUser(user);
-        console.log(created, "Created User")
-      }
-
-      return true;
     },
 
     async jwt({ token, trigger, session, user }) {
+      try {
+        if (trigger === "signIn") {
+          const existingUser = await getUser({
+            email: (user as any).email,
+            role: (user as any).role,
+            populate: false
+          });
 
-      if (trigger === "signIn") {
-        // console.log(user, "User", token, session);
-        const existingUser = await getUser(user as any);
+          if (existingUser) {
+            return { ...token, ...sanitizeMongoObject(existingUser) };
+          }
+        }
 
-        if (typeof existingUser === "object")
-          return { ...token, ...existingUser }
+        if (trigger === 'update' && session?.user) {
+          return { ...token, ...sanitizeMongoObject(session.user) };
+        }
+
+        return token;
+      } catch (error) {
+        console.error("JWT error:", error);
+        return token;
       }
-      if (trigger === 'update' && session?.user)
-        return { ...token, ...userFilter(session.user) };
-
-      return token;
     },
     // Disable type checking issues here
     async session({ session, token }) {
-      if (session?.user)
-        session.user = { ...session.user, ...userFilter(token) }
+      if (session?.user) {
+        session.user = { ...session.user, ...sanitizeMongoObject(token) };
+      }
       return session as Session; // Ensure we always return session
     }
   },
