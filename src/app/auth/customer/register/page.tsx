@@ -21,7 +21,12 @@ import { uploadImage } from "@/app/actions/cloudinary"
 const registerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z
+    .string()
+    .min(6, "Password must be at least 6 characters"),
+    // .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/, 
+      // "Password must contain at least one uppercase letter, one lowercase letter, one number and one special character"),
+  confirmPassword: z.string(),
   phone: z.string().regex(/^(\+\d{1,3}[- ]?)?\d{10}$/, "Please enter a valid phone number"),
   address: z.object({
     street: z.string().optional(),
@@ -31,6 +36,9 @@ const registerSchema = z.object({
     landmark: z.string().optional(),
   }),
   profileImage: z.string().optional(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
 });
 
 export default function CustomerRegisterPage() {
@@ -45,6 +53,7 @@ export default function CustomerRegisterPage() {
       name: "",
       email: "",
       password: "",
+      confirmPassword: "",
       phone: "",
       address: {
         street: "",
@@ -62,7 +71,7 @@ export default function CustomerRegisterPage() {
       const imageUrl = profileImage !== "/placeholder.svg" 
         ? await uploadImage(profileImage)
         : profileImage
-
+      delete (values as any)?.confirmPassword
       const userData = {
         ...values,
         role: "user",
@@ -70,7 +79,7 @@ export default function CustomerRegisterPage() {
         isPhoneVerified: false,
         isEmailVerified: false,
       }
-
+console.log("userData", userData);
       const result = await signIn("credentials", {
         data: JSON.stringify(userData),
         redirect: false,
@@ -82,7 +91,7 @@ export default function CustomerRegisterPage() {
       }
 
       toast.success("Registration successful!")
-      router.push("/auth/customer/verify")
+      // router.push("/auth/customer/verify")
     } catch (error) {
       toast.error("An error occurred. Please try again.")
     } finally {
@@ -161,6 +170,21 @@ export default function CustomerRegisterPage() {
                     />
                     {form.formState.errors.password && (
                       <p className="text-sm text-red-500">{form.formState.errors.password.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Confirm Password</Label>
+                    <Input 
+                      id="confirmPassword" 
+                      type="password" 
+                      {...form.register("confirmPassword")} 
+                      placeholder="••••••••"
+                    />
+                    {form.formState.errors.confirmPassword && (
+                      <p className="text-sm text-red-500">
+                        {form.formState.errors.confirmPassword.message}
+                      </p>
                     )}
                   </div>
 

@@ -16,18 +16,18 @@ export default {
     },
     providers: [Credentials({
         async authorize(credentials) {
-            console.log("credentials", credentials);
+            // console.log("credentials", credentials);
             try {
-                console.log("credentials", credentials);
+                // console.log("credentials", credentials);
                 if (credentials?.data) {
                     const data = JSON.parse(credentials?.data as string);
                     delete credentials?.data;
                     credentials = {
                         ...credentials, ...data
                     }
-                    console.log("credentials", credentials);
+                    // console.log("credentials", credentials);
                 } else if(credentials?.email) {
-                    console.log("credentials", credentials);
+                    // console.log("credentials", credentials);
                     credentials = {
                         ...credentials
                     }

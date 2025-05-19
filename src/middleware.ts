@@ -14,7 +14,7 @@ export default auth(async (request: any) => {
     cookieName: "user",
     raw: false 
   });
-
+// console.log({user}, "middleware");
   // Default auth routing
   if (pathname === "/auth" && !user) {
     // Redirect to customer login by default
@@ -23,7 +23,6 @@ export default auth(async (request: any) => {
 
   const isLogged = !!user;
   const authRoute = '/auth';
-  console.log({user: user?.role});
   
   // Protect admin routes - only providers can access
   // if (pathname.startsWith("/admin")) {

@@ -27,6 +27,7 @@ export interface UserType {
 interface IUser {
   name?: string;
   email?: string;
+  password?: string;
   phone: string;
   address?: {
     street?: string;
@@ -57,6 +58,11 @@ const userSchema = new mongoose.Schema<IUser>(
       lowercase: true,
       trim: true,
       match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, "Please provide a valid email"],
+    },
+    password: {
+      type: String,
+      required: true,
+      select: false, // Exclude from queries by default
     },
     phone: {
       type: String,

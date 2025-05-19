@@ -16,6 +16,7 @@ import {
 import { signOut, useSession } from "next-auth/react"
 import { deleteCookie } from "cookies-next/client"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -122,13 +123,26 @@ export function Header() {
             </Link>
 
             {(session?.user as any)?.email ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+              <DropdownMenu >
+                <DropdownMenuTrigger asChild className="bg-gray-200 hover:bg-gray-300">
+                 {session?.user?.profileImage ? 
+                 <Image 
+                  src={session?.user?.profileImage || "/placeholder.svg"}
+                  alt={session?.user?.name || "Profile"}
+                  width={32}
+                  height={32}
+                  priority
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = "/placeholder.svg";
+                  }}
+                  className="h-8 w-8 rounded-full object-cover border-2 border-gray-200"
+                  />
+                 : <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <div className="h-8 w-8 rounded-full bg-primary/0 flex items-center justify-center">
                       <span className="text-sm font-medium text-primary">{session?.user?.name?.charAt(0) || "U"}</span>
                     </div>
-                  </Button>
+                  </Button>}
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <div className="flex items-center justify-start gap-2 p-2">

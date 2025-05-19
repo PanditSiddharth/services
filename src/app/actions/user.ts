@@ -12,7 +12,7 @@ export async function getUser({ email, role, populate = false }: { email: string
     await connectDB();
 
     const Model = role === "serviceProvider" ? ServiceProvider : User;
-    let query = (Model as any).findOne({ email });
+    let query = (Model as any).findOne({ email }, "password name email phone profileImage address role isPhoneVerified isEmailVerified isActive createdAt updatedAt");
     
     if (populate) {
       query = query.populate('profession', 'name');

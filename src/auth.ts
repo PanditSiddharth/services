@@ -47,7 +47,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async signIn({ user }: any) {
       try {
-        console.log(user);
         if (!user?.email) return false;
         await dbConnect();
 
@@ -55,7 +54,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const userToCreate = { ...user };
         delete userToCreate.csrfToken;
         delete userToCreate.callbackUrl;
-        delete userToCreate.confirmPassword;
 
         const existingUser = await getUser({
           email: user.email,
@@ -64,6 +62,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         });
 
         if (!existingUser && userToCreate.name) {
+
           await createOrUpdateUser(userToCreate);
           return true;
         }
@@ -83,16 +82,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             role: (user as any).role,
             populate: false
           });
+             
 
           if (existingUser) {
+             console.log("JWT token:", user, existingUser);
+
             if((user as any)?.password === existingUser.password){
               const sanitizedUser = sanitizeMongoObject(existingUser);
-              console.log("JWT Callback - sanitized user:", sanitizedUser);
-              return { 
+             
+              const ret = { 
                 ...token, 
                 _id: sanitizedUser._id,
                 ...sanitizedUser 
               };
+
+             console.log("JWT token:", ret);
+              return ret;
             } 
             else 
               return token || null
@@ -100,6 +105,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
 
         if (trigger === 'update' && session?.user) {
+          const { iat, exp, jti, ...rest } = session.user;
+          await createOrUpdateUser(rest)
           return { ...token, ...sanitizeMongoObject(session.user) };
         }
 
@@ -113,12 +120,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async session({ session, token }) {
       if (session?.user) {
         const sanitizedToken = sanitizeMongoObject(token);
-        console.log("Session Callback - sanitized token:", sanitizedToken);
         session.user = { 
           ...session.user, 
           _id: sanitizedToken._id,
           ...sanitizedToken 
         };
+
       }
       return session as Session; // Ensure we always return session
     }
