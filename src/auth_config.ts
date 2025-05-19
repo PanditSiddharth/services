@@ -11,18 +11,28 @@ export default {
                 sameSite: "lax",
                 path: "/",
                 secure: true,
-                domain: process.env.NODE_ENV === "production" ? ".ignoux.in" : undefined,
             }
         }
     },
     providers: [Credentials({
         async authorize(credentials) {
+            console.log("credentials", credentials);
             try {
-               const data = JSON.parse(credentials?.data as string);
-               delete credentials?.data;
-               credentials = {
-                ...credentials, ...data
-               }
+                console.log("credentials", credentials);
+                if (credentials?.data) {
+                    const data = JSON.parse(credentials?.data as string);
+                    delete credentials?.data;
+                    credentials = {
+                        ...credentials, ...data
+                    }
+                    console.log("credentials", credentials);
+                } else if(credentials?.email) {
+                    console.log("credentials", credentials);
+                    credentials = {
+                        ...credentials
+                    }
+                }
+
                 // Replace with actual user validation logic
                 return credentials as any; // Return a valid User object
             } catch (error) {

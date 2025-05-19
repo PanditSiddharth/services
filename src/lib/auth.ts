@@ -8,8 +8,8 @@ export async function getSession() {
 
 export async function getCurrentUser() {
   const session = await getSession()
-
-  if (!session?.user?.id) {
+console.log("user", session)
+  if (!session?.user?._id) {
     return null
   }
 
@@ -17,7 +17,7 @@ export async function getCurrentUser() {
     await connectDB()
 
     if (session.user.role === "user") {
-      const user = await User.findById(session.user.id).lean()
+      const user = await User.findById(session.user._id).lean()
       if (!user) return null
 
       return {
@@ -26,7 +26,7 @@ export async function getCurrentUser() {
         role: "user",
       }
     } else if (session.user.role === "provider") {
-      const provider = await ServiceProvider.findById(session.user.id).lean()
+      const provider = await ServiceProvider.findById(session.user._id).lean()
       if (!provider) return null
 
       return {

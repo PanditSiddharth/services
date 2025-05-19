@@ -4,6 +4,7 @@ import { userRegisterSchema } from "@/models/zod";
 import { createOrUpdateUser, getUser } from "./app/actions/user";
 import { log } from "console";
 import dbConnect from "./lib/db-connect";
+import { AnyAaaaRecord } from "dns";
 
 // Temporary implementations for missing functions
 async function checkExistingUser(email: string): Promise<any> {
@@ -19,8 +20,7 @@ function sanitizeMongoObject(obj: any) {
   if (!obj) return obj;
   const cleaned = JSON.parse(JSON.stringify(obj));
   if (cleaned._id) {
-    cleaned.id = cleaned._id.toString();
-    delete cleaned._id;
+    cleaned._id = cleaned._id.toString();
   }
   delete cleaned.__v;
   return cleaned;
@@ -47,6 +47,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async signIn({ user }: any) {
       try {
+        console.log(user);
         if (!user?.email) return false;
         await dbConnect();
 
@@ -84,7 +85,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           });
 
           if (existingUser) {
-            return { ...token, ...sanitizeMongoObject(existingUser) };
+            if((user as any)?.password === existingUser.password){
+              const sanitizedUser = sanitizeMongoObject(existingUser);
+              console.log("JWT Callback - sanitized user:", sanitizedUser);
+              return { 
+                ...token, 
+                _id: sanitizedUser._id,
+                ...sanitizedUser 
+              };
+            } 
+            else 
+              return token || null
           }
         }
 
@@ -101,7 +112,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     // Disable type checking issues here
     async session({ session, token }) {
       if (session?.user) {
-        session.user = { ...session.user, ...sanitizeMongoObject(token) };
+        const sanitizedToken = sanitizeMongoObject(token);
+        console.log("Session Callback - sanitized token:", sanitizedToken);
+        session.user = { 
+          ...session.user, 
+          _id: sanitizedToken._id,
+          ...sanitizedToken 
+        };
       }
       return session as Session; // Ensure we always return session
     }

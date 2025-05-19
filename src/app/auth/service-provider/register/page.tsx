@@ -156,9 +156,9 @@ export default function ProviderRegisterPage() {
         console.error("Sign-in failed:", result.error);
       } else {
         console.log("Sign-in successful:", result);
+        toast.success((result as any)?.message || "Your service provider account has been created. Please log in.")
+        router.push("/user/dashboard");
       }
-      // toast.success(response.message || "Your service provider account has been created. Please log in.")
-      // router.push("/service-provider")
     } catch (error) {
       toast.error("There was an error creating your account. Please try again.")
     } finally {
@@ -550,6 +550,16 @@ export default function ProviderRegisterPage() {
                           <p className="text-sm text-red-500">{form.formState.errors["bankDetails.branch"].message}</p>
                         )}
                       </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <label>Referral Code (Optional)</label>
+                      <input
+                        type="text"
+                        name="referralCode"
+                        className="form-input"
+                        placeholder="Enter referral code"
+                      />
                     </div>
 
                     <div className="pt-4">

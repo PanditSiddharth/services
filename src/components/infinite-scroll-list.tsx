@@ -14,7 +14,7 @@ interface InfiniteScrollListProps<T> {
   emptyMessage?: string
 }
 
-export function InfiniteScrollList<T extends { id: string }>({
+export function InfiniteScrollList<T extends { _id: string }>({
   fetchData,
   renderItem,
   initialData,
@@ -107,7 +107,7 @@ export function InfiniteScrollList<T extends { id: string }>({
           className="space-y-2"
         >
           {items.map((item) => (
-            <div key={(item as any)?._id || (item as any)?.id} className="transition-all duration-200 hover:bg-gray-50">
+            <div key={(item as any)?._id} className="transition-all duration-200 hover:bg-gray-50">
              {}
               {renderItem(item)}
             </div>

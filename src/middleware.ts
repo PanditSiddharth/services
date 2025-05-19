@@ -8,7 +8,19 @@ const { auth } = NextAuth(auth_config);
 
 export default auth(async (request: any) => {
   const { pathname } = request.nextUrl;
-  const user = await getToken({ req: request, secret: process.env.AUTH_SECRET, cookieName: "user" , raw:false });
+  const user = await getToken({ 
+    req: request, 
+    secret: process.env.AUTH_SECRET, 
+    cookieName: "user",
+    raw: false 
+  });
+
+  // Default auth routing
+  if (pathname === "/auth" && !user) {
+    // Redirect to customer login by default
+    return NextResponse.redirect(new URL("/auth/user/login", request.url));
+  }
+
   const isLogged = !!user;
   const authRoute = '/auth';
   console.log({user: user?.role});

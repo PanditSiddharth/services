@@ -17,14 +17,14 @@ import {
 import { deleteService } from "@/app/actions/services"
 import { toast } from "react-toastify"
 
-export function DeleteServiceButton({ id }: { id: string }) {
+export function DeleteServiceButton({ _id }: { _id: string }) {
   const [isPending, setIsPending] = useState(false)
   const [open, setOpen] = useState(false)
 
   async function handleDelete() {
     setIsPending(true)
     try {
-      const result = await deleteService(id)
+      const result = await deleteService(_id)
       if (result.message === "Service deleted successfully") {
         toast.success("Service deleted successfully")
       } else {

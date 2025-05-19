@@ -32,7 +32,7 @@ export default async function ServicesPage() {
       ) : (
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
           {activeServices.map((service:any) => (
-            <Card key={service._id || service.id} className="overflow-hidden flex flex-col h-full">
+            <Card key={service._id} className="overflow-hidden flex flex-col h-full">
               <div className="relative w-full h-48">
                 <Image
                   src={service.image || "/placeholder.svg"}

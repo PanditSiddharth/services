@@ -7,23 +7,23 @@ import {
   getBookings,
   getReviews,
 } from "@/app/actions/admin";
-import { getDashboardStats } from "@/app/actions/admin0"
-import { UserList } from "./components/users-list"
-import { ProviderList } from "./components/provider-list"
-import { ServiceList } from "./components/service-list"
-import { BookingList } from "./components/booking-list"
-import { ReviewList } from "./components/review-list"
-import { DashboardStats } from "./components/dashboard-stats"
-import { RecentActivity } from "./components/recent-activity"
-import { BookingChart } from "./components/booking-chart"
+import { getDashboardStats } from "@/app/actions/admin0";
+import { UserList } from "./components/users-list";
+import { ProviderList } from "./components/provider-list";
+import { ServiceList } from "./components/service-list";
+import { BookingList } from "./components/booking-list";
+import { ReviewList } from "./components/review-list";
+import { DashboardStats } from "./components/dashboard-stats";
+import { RecentActivity } from "./components/recent-activity";
+import { BookingChart } from "./components/booking-chart";
 
 export default async function DashboardPage() {
   // Fetch initial data for all lists
-  const { users, pagination: { hasMore: hasMoreUsers }} = await getUsers(1, 10)
-  const { providers, hasMore: hasMoreProviders } = await getServiceProviders(1, 10)
-  const { services, hasMore: hasMoreServices } = await getServices(1, 10)
-  const { bookings, hasMore: hasMoreBookings } = await getBookings(1, 10)
-  const { reviews, pagination: { hasMore: hasMoreReviews } } = await getReviews(1, 10)
+  const { users, pagination: { hasMore: hasMoreUsers }} = await getUsers(1, 10);
+  const { providers, hasMore: hasMoreProviders } = await getServiceProviders(1, 10);
+  const { services, hasMore: hasMoreServices } = await getServices(1, 10);
+  const { bookings, hasMore: hasMoreBookings } = await getBookings(1, 10);
+  const { reviews, pagination: { hasMore: hasMoreReviews } } = await getReviews(1, 10);
 
   // Get dashboard statistics
   const stats = await getDashboardStats()

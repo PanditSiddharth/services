@@ -39,12 +39,12 @@ export function Footer() {
             <h3 className="text-lg font-semibold mb-4">For Providers</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/auth/provider/register" className="text-gray-600 hover:text-primary">
+                <Link href="/auth/service-provider/register" className="text-gray-600 hover:text-primary">
                   Register as Provider
                 </Link>
               </li>
               <li>
-                <Link href="/auth/provider/login" className="text-gray-600 hover:text-primary">
+                <Link href="/auth/service-provider/login" className="text-gray-600 hover:text-primary">
                   Provider Login
                 </Link>
               </li>

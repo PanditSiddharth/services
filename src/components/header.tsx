@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Menu, X, User, Settings, LogOut } from "lucide-react"
+import { Menu, X, User, Settings, LogOut, ChevronDown } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { LogoutButton } from "@/components/logout-button"
@@ -13,9 +13,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useSession } from "next-auth/react"
+import { signOut, useSession } from "next-auth/react"
 import { deleteCookie } from "cookies-next/client"
-import { signOut } from "@/auth"
 import { useRouter } from "next/navigation"
 
 export function Header() {
@@ -35,8 +34,7 @@ export function Header() {
   const handleLogout = async () => {
     try {
       deleteCookie('user', { 
-        path: '/',
-        domain: process.env.NODE_ENV === "production" ? ".ignoux.in" : undefined
+        path: '/'
       });
       
       localStorage.clear();
@@ -48,6 +46,39 @@ export function Header() {
       console.error("Logout error:", error);
     }
   };
+
+  const AuthButton = () => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button className="flex items-center gap-2">
+          Sign In <ChevronDown className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuItem asChild>
+          <Link href="/auth/customer/login" className="w-full">
+            Customer Login
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/auth/customer/register" className="w-full">
+            Customer Register
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/auth/service-provider/login" className="w-full">
+            Provider Login
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/auth/service-provider/register" className="w-full">
+            Provider Register
+          </Link>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
 
   return (
     <header className="bg-white shadow-sm">
@@ -114,7 +145,7 @@ export function Header() {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href={session?.user?.role != "serviceProvider" ? "/user/profile" : "/admin/profile"}>
+                    <Link href={session?.user?.role != "serviceProvider" ? "/user/settings" : "/admin/settings"}>
                       <Settings className="mr-2 h-4 w-4" />
                       <span>Settings</span>
                     </Link>
@@ -132,9 +163,7 @@ export function Header() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button asChild>
-                <Link href="/auth">Sign In</Link>
-              </Button>
+              <AuthButton />
             )}
           </nav>
 
@@ -219,11 +248,41 @@ export function Header() {
                   <LogoutButton className="justify-start px-0" variant="ghost" />
                 </>
               ) : (
-                <Button asChild>
-                  <Link href="/auth" onClick={closeMenu}>
-                    Sign In
+                <div className="space-y-3 pt-2">
+                  <div className="text-sm font-medium text-gray-500 pb-2">Customer</div>
+                  <Link 
+                    href="/auth/customer/login" 
+                    className="block py-2 px-3 rounded-md text-sm font-medium text-gray-600 hover:text-primary hover:bg-gray-50"
+                    onClick={closeMenu}
+                  >
+                    Login
                   </Link>
-                </Button>
+                  <Link 
+                    href="/auth/customer/register"
+                    className="block py-2 px-3 rounded-md text-sm font-medium text-gray-600 hover:text-primary hover:bg-gray-50"
+                    onClick={closeMenu}
+                  >
+                    Register
+                  </Link>
+                  
+                  <div className="border-t my-2"></div>
+                  
+                  <div className="text-sm font-medium text-gray-500 py-2">Service Provider</div>
+                  <Link 
+                    href="/auth/service-provider/login"
+                    className="block py-2 px-3 rounded-md text-sm font-medium text-gray-600 hover:text-primary hover:bg-gray-50"
+                    onClick={closeMenu}
+                  >
+                    Login
+                  </Link>
+                  <Link 
+                    href="/auth/service-provider/register"
+                    className="block py-2 px-3 rounded-md text-sm font-medium text-gray-600 hover:text-primary hover:bg-gray-50"
+                    onClick={closeMenu}
+                  >
+                    Register
+                  </Link>
+                </div>
               )}
             </div>
           </nav>

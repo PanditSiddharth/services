@@ -202,9 +202,9 @@ export default function ServiceProviderDashboard() {
   });
 
   useEffect(() => {
-    if ((session?.user as any)?.id) {
-      if (session && (session.user as any)?.id) {
-        getProviderStats((session.user as any).id)
+    if ((session?.user as any)?._id) {
+      if (session && (session.user as any)?._id) {
+        getProviderStats((session.user as any)._id)
           .then((data) => {
             setDashboardData({
               recentBookings: data.recentBookings || [],

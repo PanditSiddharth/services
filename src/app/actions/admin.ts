@@ -2,9 +2,10 @@
 
 import dbConnect from '@/lib/db-connect'
 import { User, ServiceProvider, Service, Booking, Review } from '@/models/index'
+import { Types } from 'mongoose'; // Add this import at the top
 // Types for our data
 export type User = {
-    id: string
+    _id: string;
     name: string
     email: string
     phone: string
@@ -14,7 +15,7 @@ export type User = {
   }
   
   export type ServiceProvider = {
-    id: string
+    _id: string;
     businessName: string
     ownerName: string
     email: string
@@ -34,7 +35,7 @@ export type User = {
   }
   
   export type Service = {
-    id: string
+    _id: string;
     name: string
     slug: string
     description: string
@@ -42,7 +43,7 @@ export type User = {
     image: string
     isActive: boolean
     subServices: {
-      id: string
+      _id: string;
       name: string
       description?: string
       basePrice: number
@@ -54,7 +55,7 @@ export type User = {
   }
   
   export type Booking = {
-    id: string
+    _id: string;
     userId: string
     userName: string
     providerId: string
@@ -77,7 +78,7 @@ export type User = {
   }
   
   export type Review = {
-    id: string
+    _id: string;
     userId: string
     userName: string
     providerId: string
@@ -130,7 +131,7 @@ export async function getUsers(page = 1, limit = 10, search = "") {
       
       // Map MongoDB documents to the expected format with proper error handling
       const formattedUsers = users.map(user => ({
-        id: user._id?.toString() || '',
+        _id: user._id?.toString() || '',
         name: user.name || '',
         email: user.email || '',
         phone: user.phone || '',
@@ -183,7 +184,7 @@ export async function getServiceProviders(
 ) {
   try {
     await dbConnect()
-    
+    console.log("Fetching service providers with options:", { page, limit, search, options })
     // Build base query
     const query: any = {};
     
@@ -198,13 +199,13 @@ export async function getServiceProviders(
       ];
     }
 
-    // Add service type filter
+    // Convert filterBy to ObjectId if provided
     if (options.filterBy && options.filterBy !== 'all') {
-      const service = await Service.findOne({ 
-        slug: options.filterBy.toLowerCase()
-      });
-      if (service) {
-        query.profession = service._id;
+      try {
+        query.profession = new Types.ObjectId(options.filterBy);
+        console.log("Filter query:", query);
+      } catch (err) {
+        console.error("Invalid ObjectId for profession filter:", options.filterBy);
       }
     }
 
@@ -228,7 +229,7 @@ export async function getServiceProviders(
     // Calculate pagination
     const skip = (page - 1) * limit;
     
-    // Use distinct and aggregation to ensure unique results
+    // Log the complete pipeline for debugging
     const pipeline = [
       { $match: query },
       { $sort: sort },
@@ -256,8 +257,16 @@ export async function getServiceProviders(
       }
     ];
 
-    // Execute aggregation
-    const providers = await ServiceProvider.aggregate(pipeline);
+    console.log("Aggregation pipeline:", JSON.stringify(pipeline, null, 2));
+
+    // Execute aggregation with error catching
+    const providers = await ServiceProvider.aggregate(pipeline).catch(err => {
+      console.error("Aggregation error:", err);
+      return [];
+    });
+    
+    console.log("Found providers:", providers.length);
+    
     const totalCount = await ServiceProvider.countDocuments(query);
     
     const hasMore = skip + providers.length < totalCount;
@@ -324,7 +333,7 @@ export async function getServiceProviders(
       
       // Map MongoDB documents to the expected format
       const formattedServices = services.map(service => ({
-        id: service?._id?.toString(),
+        _id: service?._id?.toString(),
         name: service.name,
         slug: service.slug,
         description: service.description,
@@ -332,7 +341,7 @@ export async function getServiceProviders(
         image: service.image,
         isActive: service.isActive,
         subServices: service.subServices.map(sub => ({
-          id: sub._id.toString(),
+          _id: sub._id.toString(),
           name: sub.name,
           description: sub.description || '',
           basePrice: sub.basePrice,
@@ -397,7 +406,7 @@ export async function getBookings(page = 1, limit = 10, search = "", status?: st
       
       // Map MongoDB documents to the expected format
       const formattedBookings = bookings.map(booking => ({
-        id: booking?._id?.toString(),
+        _id: booking?._id?.toString(),
         userId: booking.user?._id?.toString(),
         userName: booking.user?.name,
         providerId: booking.serviceProvider?._id?.toString(),
@@ -477,7 +486,7 @@ export async function getReviews(page = 1, limit = 10, search = "", minRating?: 
       
       // Map MongoDB documents to the expected format with proper error handling
       const formattedReviews = reviews.map(review => ({
-        id: review._id?.toString() || '',
+        _id: review._id?.toString() || '',
         userId: review.user?._id?.toString() || '',
         userName: review.user?.name || '',
         providerId: review.serviceProvider?._id?.toString() || '',

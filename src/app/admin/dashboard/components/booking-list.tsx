@@ -22,7 +22,7 @@ export function BookingList({ initialBookings, initialHasMore }: BookingListProp
 
   const fetchBookings = async (page: number, search: string) => {
     const { bookings, hasMore } = await getBookings(page, 10, search, statusFilter !== "all" ? statusFilter : undefined)
-    return { data: bookings.map(booking => {console.log(booking.id); return{ ...booking, id: (booking as any)?.id }}), hasMore }
+    return { data: bookings.map(booking => { return{ ...booking, _id: (booking as any)?._id }}), hasMore }
   }
 
   const getStatusColor = (status: string) => {
@@ -56,7 +56,7 @@ export function BookingList({ initialBookings, initialHasMore }: BookingListProp
     }
   }
 
-  const renderBooking = (booking: Booking & { id: string }) => (
+  const renderBooking = (booking: Booking & { _id: string }) => (
     <Card className="p-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

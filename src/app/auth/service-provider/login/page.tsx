@@ -14,6 +14,7 @@ import { Form } from "@/components/ui/form"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MyField } from "@/components/my-field"
+import { signIn } from "next-auth/react"
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -65,23 +66,18 @@ export default function ServiceProviderLogin() {
     setIsSubmitting(true);
 
     try {
-      const formData = new FormData();
-
-      // Add all form values to FormData
-      Object.entries(values).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          formData.append(key, value.toString());
+      signIn("credentials", {
+        email: values.email,
+        password: values.password,
+        redirect: false
+      }).then((response) => {
+        if (response?.error) {
+          toast.error("Invalid credentials. Please try again.")
+        } else {
+          toast.success("Login successful!");
+          router.push("/service-provider");
         }
       })
-
-      // const result = await loginServiceProvider(formData);
-
-      // if (result.success) {
-      //   toast.success(result.message);
-      //   router.push("/service-provider");
-      // } else {
-      //   toast.error(result.message);
-      // }
     } catch (error) {
       console.error("Login error:", error)
       toast.error("Login failed. Please try again.")

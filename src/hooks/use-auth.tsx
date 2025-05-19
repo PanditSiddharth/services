@@ -7,8 +7,8 @@ export function useAuth() {
 
   const isLoading = status === "loading"
   const isAuthenticated = status === "authenticated"
-  const isUser = isAuthenticated && session?.user?.role === "user"
-  const isProvider = isAuthenticated && session?.user?.role === "provider"
+  const isUser = isAuthenticated && (session as any)?.user?.role === "user"
+  const isProvider = isAuthenticated && (session as any)?.user?.role === "provider"
 
   return {
     session,

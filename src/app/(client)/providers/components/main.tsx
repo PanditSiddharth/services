@@ -1,12 +1,14 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { InfiniteScrollList } from './InfiniteScroll'
 import { getServiceProviders } from '@/app/actions/admin'
 import Provider from './Provider'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { getServices } from '@/app/actions/services' // Add this import
+import ProviderSkeleton from './ProviderSkeleton'
 
 interface MainProps {
   initialProviders: any[]
@@ -16,36 +18,57 @@ interface MainProps {
 export default function Main({ initialProviders, hasMore }: MainProps) {
   const searchParams = useSearchParams()
   const [sortBy, setSortBy] = useState("rating")
-  const [filterBy, setFilterBy] = useState(() => searchParams.get("service") || "all")
+  const [filterBy, setFilterBy] = useState("all")
+  const [services, setServices] = useState<{ _id: string; name: string; }[]>([])
+  const [isLoading, setIsLoading] = useState(false)  // Changed initial state to false
+
+  // Fetch services for filter
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const services = await getServices("_id name");
+        setServices(services);
+      } catch (error) {
+        console.error("Failed to fetch services:", error);
+      }
+    };
+    fetchServices();
+  }, []);
 
   // Reset data when filters change
   useEffect(() => {
     const serviceParam = searchParams.get("service")
+    console.log("Service param:", serviceParam)
     if (serviceParam) {
       setFilterBy(serviceParam)
     }
+ 
   }, [searchParams])
 
-  const fetchProviders = async (page: number, search: string) => {
-    // Pass sort and filter parameters to the API
-    const { providers, hasMore } = await getServiceProviders(
-      page, 
-      10, 
-      search, 
-      {
-        sortBy,
-        filterBy: filterBy === "all" ? undefined : filterBy
+  const fetchProviders = useCallback(async (page: number, search: string) => {
+    try {
+      const { providers, hasMore } = await getServiceProviders(
+        page, 
+        10, 
+        search, 
+        {
+          sortBy,
+          filterBy: filterBy === "all" ? undefined : filterBy
+        }
+      )
+
+      return { 
+        data: providers.map((provider: any) => ({
+          ...provider,
+          _id: provider._id 
+        })), 
+        hasMore 
       }
-    )
-    
-    return { 
-      data: providers.map((provider: any) => ({
-        ...provider,
-        id: provider._id 
-      })), 
-      hasMore 
+    } catch (error) {
+      console.error("Failed to fetch providers:", error)
+      return { data: [], hasMore: false }
     }
-  }
+  }, [sortBy, filterBy])
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -82,27 +105,34 @@ export default function Main({ initialProviders, hasMore }: MainProps) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Services</SelectItem>
-              <SelectItem value="plumbing">Plumbing</SelectItem>
-              <SelectItem value="electrical">Electrical</SelectItem>
-              <SelectItem value="cleaning">Cleaning</SelectItem>
-              <SelectItem value="carpentry">Carpentry</SelectItem>
-              <SelectItem value="painting">Painting</SelectItem>
-              <SelectItem value="gardening">Gardening</SelectItem>
+              {services.map((service) => (
+                <SelectItem key={service._id} value={service._id}>
+                  {service.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
 
         <Card>
           <CardContent className="p-6">
-            <InfiniteScrollList
-              fetchData={fetchProviders}
-              renderItem={(provider) => <Provider provider={provider} />}
-              initialData={initialProviders.map((p: any) => ({ ...p, id: p._id }))}
-              initialHasMore={hasMore}
-              searchPlaceholder="Search providers by name or service..."
-              emptyMessage="No service providers found"
-              columns={{ base: 1, sm: 2, md: 3, lg: 4, xl: 4 }}
-            />
+            {isLoading ? (
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                {Array(8).fill(0).map((_, i) => (
+                  <ProviderSkeleton key={i} />
+                ))}
+              </div>
+            ) : (
+              <InfiniteScrollList
+                fetchData={fetchProviders}
+                renderItem={(provider) => <Provider provider={provider} />}
+                initialData={initialProviders.map((p: any) => ({ ...p, _id: p._id }))}
+                initialHasMore={hasMore}
+                searchPlaceholder="Search providers by name or service..."
+                emptyMessage="No service providers found"
+                columns={{ base: 1, sm: 2, md: 3, lg: 4, xl: 4 }}
+              />
+            )}
           </CardContent>
         </Card>
       </div>

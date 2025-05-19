@@ -1,13 +1,40 @@
-import React from 'react'
+'use client'
+
+import React, { useEffect, useState } from 'react'
 import Provider from './components/main'
 import { getServiceProviders } from '@/app/actions/admin'
+import { Metadata } from "next"
 
-const page = async () => {
-    const { providers: initialProviders, hasMore } = await getServiceProviders(1, 10)
-console.log("Initial Providers:", initialProviders)
+const Page = () => {
+  const [initialProviders, setInitialProviders] = useState([])
+  const [hasMore, setHasMore] = useState(false)
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const searchParams = new URLSearchParams(window.location.search)
+      const service = searchParams.get("service") || ""
+
+      const { providers, hasMore } = await getServiceProviders(
+        1,
+        10,
+        "",
+        { filterBy: service }
+      )
+
+      setInitialProviders(providers as any)
+      setHasMore(hasMore)
+    }
+
+    fetchData()
+  }, [])
+
   return (
-    <Provider initialProviders={initialProviders} hasMore={hasMore} />
+    <Provider
+      initialProviders={initialProviders}
+      hasMore={hasMore}
+    />
   )
 }
 
-export default page
+// Note: metadata needs to be moved to layout.tsx since it can't be used in client components
+export default Page

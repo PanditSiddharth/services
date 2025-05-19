@@ -18,7 +18,7 @@ export function RecentActivity({ recentBookings, recentReviews }: RecentActivity
         <CardContent>
           <div className="space-y-4">
             {recentBookings.map((booking) => (
-              <div key={(booking as any).id} className="flex items-center justify-between border-b pb-2">
+              <div key={(booking as any)._id} className="flex items-center justify-between border-b pb-2">
                 
                 <div>
                   <p className="font-medium">{booking.serviceName}</p>
@@ -57,7 +57,7 @@ export function RecentActivity({ recentBookings, recentReviews }: RecentActivity
         <CardContent>
           <div className="space-y-4">
             {recentReviews.map((review) => (
-              <div key={review.id} className="border-b pb-2">
+              <div key={(review as any)._id} className="border-b pb-2">
              
                 <div className="flex items-center justify-between">
                   <p className="font-medium">{review.serviceName}</p>

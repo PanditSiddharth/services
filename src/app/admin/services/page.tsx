@@ -67,7 +67,7 @@ export default async function ServicesPage() {
                         Manage
                       </Button>
                     </Link>
-                    <DeleteServiceButton id={service._id} />
+                    <DeleteServiceButton _id={service._id} />
                   </div>
                 </div>
               </CardContent>

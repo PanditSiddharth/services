@@ -75,7 +75,7 @@ export type Booking = {
 }
 
 export type Review = {
-  id: string
+  _id: string
   userId: string
   userName: string
   providerId: string
@@ -254,7 +254,7 @@ function generateMockReviews(count: number, offset = 0): Review[] {
     const service = services[Math.floor(Math.random() * services.length)]
 
     return {
-      id: `review-${offset + i + 1}`,
+      _id: `review-${offset + i + 1}`,
       userId: `user-${Math.floor(Math.random() * 50) + 1}`,
       userName: `User ${Math.floor(Math.random() * 50) + 1}`,
       providerId: `provider-${Math.floor(Math.random() * 50) + 1}`,

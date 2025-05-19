@@ -17,10 +17,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default async function ServiceDetailsPage({
   params,
-}: {
-  params: { id: string }
-}) {
-  const service = await getServiceById(params.id)
+}: any) {
+  const service = await getServiceById(params._id)
   
   if (!service) {
     notFound()

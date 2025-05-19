@@ -63,9 +63,9 @@ export function UserList({ initialUsers, initialHasMore }: UserListProps) {
 
   return (
     <InfiniteScrollList
-      fetchData={fetchUsers}
-      renderItem={renderUser}
-      initialData={initialUsers}
+      fetchData={fetchUsers as any}
+      renderItem={renderUser as any}
+      initialData={initialUsers as any}
       initialHasMore={initialHasMore}
       searchPlaceholder="Search users by name or email..."
       emptyMessage="No users found"

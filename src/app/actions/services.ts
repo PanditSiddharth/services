@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import dbConnect from "@/lib/db-connect"
 import Service from "@/models/service"
+import { Types } from "mongoose"
 
 // Zod schema for subservice validation
 const SubServiceSchema = z.object({
@@ -72,7 +73,7 @@ export async function createService(formData: FormData) {
 }
 
 // Update service
-export async function updateService(id: string, formData: FormData) {
+export async function updateService(_id: string, formData: FormData) {
   const validatedFields = ServiceSchema.safeParse({
     slug: formData.get("name")?.toString().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") || "service",
     name: formData.get("name"),
@@ -94,8 +95,8 @@ export async function updateService(id: string, formData: FormData) {
   try {
     await dbConnect()
     
-    // Find service by ID and update
-    await Service.findByIdAndUpdate(id, data)
+    // Find service by _ID and update
+    await Service.findByIdAndUpdate(_id, data)
     return { success: true, message: "Service updated successfully" }
   } catch (error) {
     console.error("Error updating service:", error)
@@ -106,10 +107,10 @@ export async function updateService(id: string, formData: FormData) {
 }
 
 // Delete service
-export async function deleteService(id: string) {
+export async function deleteService(_id: string) {
   try {
     await dbConnect()
-    await Service.findByIdAndDelete(id)
+    await Service.findByIdAndDelete(_id)
     revalidatePath("/admin/services")
     return { message: "Service deleted successfully" }
   } catch (error) {
@@ -143,7 +144,7 @@ export async function addSubService(serviceId: string, formData: FormData) {
     
     await Service.findByIdAndUpdate(
       serviceId,
-      { $push: { subServices: subServiceData } },
+      { $push: { subServices: { ...subServiceData, _id: new Types.ObjectId() } } },
       { new: true }
     )
     
@@ -191,11 +192,11 @@ export async function getServices(projection:any = "") {
   }
 }
 
-// Get service by id
-export async function getServiceById(id: string) {
+// Get service by _id
+export async function getServiceById(_id: string) {
   try {
     await dbConnect()
-    const service = await Service.findById(id)
+    const service = await Service.findById(_id)
     if (!service) return null
     return JSON.parse(JSON.stringify(service))
   } catch (error) {

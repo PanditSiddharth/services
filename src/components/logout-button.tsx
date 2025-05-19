@@ -20,8 +20,7 @@ export function LogoutButton({ variant = "ghost", showIcon = true, children, ...
     setIsLoading(true)
     try {
       deleteCookie('user', { 
-        path: '/',
-        domain: process.env.NODE_ENV === "production" ? ".ignoux.in" : undefined
+        path: '/'
       });
       
       localStorage.clear();

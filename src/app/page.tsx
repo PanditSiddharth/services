@@ -437,7 +437,7 @@ export default function Home() {
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <Button asChild size="lg" className="bg-white text-blue-600 hover:bg-gray-100">
-                <Link href="/auth/user/register">Sign Up as User</Link>
+                <Link href="/auth/customer/register">Sign Up as User</Link>
               </Button>
               <Button asChild size="lg" variant="outline" className="border-white text-blue-600 hover:bg-white/10">
                 <Link href="/auth/provider/register">Register as Provider</Link>

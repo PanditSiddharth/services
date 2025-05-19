@@ -22,7 +22,7 @@ interface InfiniteScrollListProps<T> {
   };
 }
 
-export function InfiniteScrollList<T extends { id: string }>({
+export function InfiniteScrollList<T extends { _id: string }>({
   fetchData,
   renderItem,
   initialData,
@@ -71,11 +71,11 @@ export function InfiniteScrollList<T extends { id: string }>({
   const deduplicateItems = (items: T[]) => {
     const seen = new Set();
     return items.filter(item => {
-      const id = (item as any)?._id || (item as any)?.id;
-      if (seen.has(id)) {
+      const _id = (item as any)?._id;
+      if (seen.has(_id)) {
         return false;
       }
-      seen.add(id);
+      seen.add(_id);
       return true;
     });
   };
@@ -148,7 +148,7 @@ export function InfiniteScrollList<T extends { id: string }>({
         >
           {items && items?.map((item) => (
             // Use _id as key since it's unique for MongoDB documents
-            <div key={(item as any)?._id || item?.id}>
+            <div key={(item as any)?._id}>
               {renderItem(item)}
             </div>
           ))}
