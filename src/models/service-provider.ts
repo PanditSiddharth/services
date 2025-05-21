@@ -167,11 +167,26 @@ const serviceProviderSchema = new mongoose.Schema(
             },
         ],
         bankDetails: {
-            accountHolderName: String,
-            accountNumber: String,
-            ifscCode: String,
-            bankName: String,
-            branch: String,
+            accountHolderName: {
+                type: String,
+                required: [true, "Account holder name is required"],
+            },
+            accountNumber: {
+                type: String,
+                required: [true, "Account number is required"],
+            },
+            ifscCode: {
+                type: String,
+                required: [true, "IFSC code is required"],
+            },
+            bankName: {
+                type: String,
+                required: [true, "Bank name is required"],
+            },
+            branch: {
+                type: String,
+                required: [true, "Branch name is required"],
+            },
         },
         createdAt: {
             type: Date,

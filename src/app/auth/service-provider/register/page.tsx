@@ -21,6 +21,7 @@ import { registerProvider } from "@/app/actions/auth"
 import { getServices } from "@/app/actions/services"
 import { signIn } from "next-auth/react"
 import { uploadImage } from "@/app/actions/cloudinary"
+import { validateReferralCode, completeReferral } from "@/app/actions/referral"
 
 // Updated schema to match MongoDB model
 const formSchema = z.object({
@@ -53,16 +54,36 @@ const formSchema = z.object({
     bankName: z.string().min(1, { message: "Bank name is required" }),
     branch: z.string().min(1, { message: "Branch name is required" }),
   }),
+  referralCode: z.string()
+    .optional()
+    .refine(val => !val || /^[A-Z0-9]{6}$/.test(val), {
+      message: "Referral code must be 6 alphanumeric characters"
+    }),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords do not match",
   path: ["confirmPassword"],
 });
+
+// Add type for referral validation result
+type ReferralValidationResult = {
+  success: boolean;
+  message?: string;
+  referral?: {
+    _id: string;
+    referralCode: string;
+    referrer: {
+      _id: string;
+      name: string;
+    }
+  }
+}
 
 export default function ProviderRegisterPage() {
   const router = useRouter()
   const [step, setStep] = useState(1)
   const [profileImage, setProfileImage] = useState("/profile-image.jpg")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [referralValidation, setReferralValidation] = useState<ReferralValidationResult | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -99,68 +120,36 @@ export default function ProviderRegisterPage() {
     },
   })
 
-  const onSubmit = async (values) => {
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true)
-    console.log("values", values)
     try {
-      // // Format the data to match the schema structure
-      // const formattedData = {
-      //   name: values.name,
-      //   email: values.email,
-      //   password: values.password,
-      //   phone: values.phone,
-      //   profession: values.profession,
-      //   experience: values.experience,
-      //   address: {
-      //     street: values["address.street"],
-      //     city: values["address.city"],
-      //     state: values["address.state"],
-      //     pincode: values["address.pincode"],
-      //     landmark: values["address.landmark"],
-      //   },
-      //   availability: {
-      //     isAvailable: values["availability.isAvailable"],
-      //     workingDays: values["availability.workingDays"],
-      //     workingHours: {
-      //       start: values["availability.workingHours.start"],
-      //       end: values["availability.workingHours.end"],
-      //     },
-      //   },
-      //   bankDetails: {
-      //     accountHolderName: values["bankDetails.accountHolderName"],
-      //     accountNumber: values["bankDetails.accountNumber"],
-      //     ifscCode: values["bankDetails.ifscCode"],
-      //     bankName: values["bankDetails.bankName"],
-      //     branch: values["bankDetails.branch"],
-      //   },
-      // }
-
       const image = "https://res.cloudinary.com/panditsiddharth/image/upload/v1746615171/services-app/d3zbbp2pwlvuzl8hsadz.jpg"
-      // const image =  await uploadImage(profileImage)
-      const data = JSON.stringify({
-        ...values,
-        role: "serviceProvider",
-        profileImage: image || "/profile-image.jpg"
-      })
- 
-      // if (!response.success) {
-      //   toast.error(response.message || "Registration failed. Please try again.")
-      //   setIsSubmitting(false)
-      //   return
-      // }
-      const result = await signIn("credentials", {
-        data
-        , redirect: false
-      });
-      if (result?.error) {
-        console.error("Sign-in failed:", result.error);
-      } else {
-        console.log("Sign-in successful:", result);
-        toast.success((result as any)?.message || "Your service provider account has been created. Please log in.")
-        router.push("/user/dashboard");
+      
+      // Updated referral handling
+      if (values.referralCode && referralValidation?.success) {
+        const formattedData = {
+          ...values,
+          role: "serviceProvider",
+          profileImage: image || "/profile-image.jpg",
+        }
+
+        const result = await signIn("credentials", {
+          data: JSON.stringify(formattedData),
+          redirect: false,
+        });
+
+        if (result?.error) {
+          toast.error("Registration failed. Please try again.");
+        } else {
+          // Complete the referral after successful registration
+          await completeReferral(values.referralCode, (result as any)?.user?._id);
+          toast.success("Registration successful!");
+          // router.push("/service-provider/dashboard");
+        }
       }
     } catch (error) {
-      toast.error("There was an error creating your account. Please try again.")
+      console.error("Registration error:", error)
+      toast.error("An error occurred. Please try again.")
     } finally {
       setIsSubmitting(false)
     }
@@ -229,6 +218,40 @@ export default function ProviderRegisterPage() {
 
   // Days of the week for availability
   const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+  const handleVerifyReferralCode = async () => {
+    const code = form.getValues("referralCode");
+    if (!code) {
+      toast.error("Please enter a referral code");
+      return;
+    }
+    
+    try {
+      const result = await validateReferralCode(code);
+      setReferralValidation(result);
+      
+      if (result.success) {
+        toast.success(`Valid referral code from ${result.referral?.referrer.name}`);
+      } else {
+        toast.error(result.message);
+        form.setValue("referralCode", "");
+      }
+    } catch (error) {
+      console.error("Referral validation error:", error);
+      toast.error("Error validating referral code");
+    }
+  }
+
+  useEffect(() => {
+    // Check for referral code in URL
+    const searchParams = new URLSearchParams(window.location.search)
+    const refCode = searchParams.get('ref')
+    if (refCode) {
+      form.setValue("referralCode", refCode)
+      // Validate referral code
+      handleVerifyReferralCode()
+    }
+  }, [])
 
   return (
     <div className="container mx-auto py-10 px-4 md:px-6">
@@ -552,14 +575,40 @@ export default function ProviderRegisterPage() {
                       </div>
                     </div>
 
-                    <div className="mb-4">
-                      <label>Referral Code (Optional)</label>
-                      <input
-                        type="text"
-                        name="referralCode"
-                        className="form-input"
-                        placeholder="Enter referral code"
-                      />
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="text-lg font-medium mb-4">Referral Program</h3>
+                        <div className="bg-muted p-4 rounded-lg mb-4">
+                          <p className="text-sm text-muted-foreground">
+                            Have a referral code? Enter it below to earn rewards for both you and your referrer!
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="referralCode">Referral Code (Optional)</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="referralCode"
+                            {...form.register("referralCode")}
+                            placeholder="Enter code"
+                            className="uppercase"
+                          />
+                          <Button 
+                            type="button" 
+                            variant="outline"
+                            onClick={handleVerifyReferralCode}
+                            disabled={isSubmitting}
+                          >
+                            Verify Code
+                          </Button>
+                        </div>
+                        {referralValidation?.success && (
+                          <p className="text-sm text-green-600">
+                            Referral code from: {referralValidation.referral?.referrer.name}
+                          </p>
+                        )}
+                      </div>
                     </div>
 
                     <div className="pt-4">

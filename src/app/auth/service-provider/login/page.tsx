@@ -69,6 +69,7 @@ export default function ServiceProviderLogin() {
       signIn("credentials", {
         email: values.email,
         password: values.password,
+        role: "serviceProvider",
         redirect: false
       }).then((response) => {
         if (response?.error) {

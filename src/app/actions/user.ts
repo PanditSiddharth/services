@@ -7,12 +7,12 @@ import { Types } from 'mongoose';
 import dbConnect from '@/lib/db-connect';
 import { Booking, Review } from '@/models';
 
-export async function getUser({ email, role, populate = false }: { email: string; role: string; populate?: boolean }) {
+export async function getUser({ email, role, populate = false, vars = "" }: { email: string; role: string; populate?: boolean, vars?: string }) {
   try {
     await connectDB();
 
     const Model = role === "serviceProvider" ? ServiceProvider : User;
-    let query = (Model as any).findOne({ email }, "password name email phone profileImage address role isPhoneVerified isEmailVerified isActive createdAt updatedAt");
+    let query = (Model as any).findOne({ email }, vars || "password name email phone profileImage address role isPhoneVerified isEmailVerified isActive createdAt updatedAt");
     
     if (populate) {
       query = query.populate('profession', 'name');
@@ -32,7 +32,7 @@ export async function getUser({ email, role, populate = false }: { email: string
     // Remove Mongoose-specific fields
     delete cleanUser.__v;
     
-    return cleanUser;
+    return JSON.parse(JSON.stringify(cleanUser));
   } catch (error) {
     console.error("Get user error:", error);
     return null;
@@ -257,5 +257,40 @@ export async function updateUserProfile(data: {
   } catch (error) {
     console.error("Error updating user profile:", error)
     throw new Error("Failed to update profile")
+  }
+}
+
+export async function deleteUser(userId: string) {
+  try {
+    await dbConnect();
+
+    // Check if it's a service provider or regular user
+    let deletedUser = await ServiceProvider.findByIdAndDelete(userId);
+    if (!deletedUser) {
+      deletedUser = await User.findByIdAndDelete(userId);
+    }
+
+    if (!deletedUser) {
+      throw new Error('User not found');
+    }
+
+    // Also delete related bookings and reviews
+    await Booking.deleteMany({ 
+      $or: [
+        { user: userId },
+        { serviceProvider: userId }
+      ]
+    });
+    await Review.deleteMany({
+      $or: [
+        { user: userId },
+        { serviceProvider: userId }
+      ]
+    });
+
+    return true;
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    throw error;
   }
 }

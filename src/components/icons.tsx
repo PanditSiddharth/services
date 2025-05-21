@@ -18,7 +18,14 @@ import {
     Settings,
     User,
     Calendar,
+    Gift,
+    List,
+    Lock,
+    LogOut,
+    Copy,
+    Loader2,
     LucideProps,
+    Link,
   } from "lucide-react"
   
   export const Icons = {
@@ -40,4 +47,11 @@ import {
     Settings: (props: LucideProps) => <Settings {...props} />,
     User: (props: LucideProps) => <User {...props} />,
     Calendar: (props: LucideProps) => <Calendar {...props} />,
+    Gift: (props: LucideProps) => <Gift {...props} />,
+    List: (props: LucideProps) => <List {...props} />,
+    Lock: (props: LucideProps) => <Lock {...props} />,
+    LogOut: (props: LucideProps) => <LogOut {...props} />,
+    Copy: (props: LucideProps) => <Copy {...props} />,
+    Loader2: (props: LucideProps) => <Loader2 {...props} />,
+    Link: (props: LucideProps) => <Link {...props} />,
   }

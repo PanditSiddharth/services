@@ -6,6 +6,35 @@ import { log } from "console";
 import dbConnect from "./lib/db-connect";
 import { AnyAaaaRecord } from "dns";
 
+import type { DefaultSession } from "next-auth"
+
+declare module "next-auth" {
+  interface User {
+    _id: string
+    role: string
+  }
+
+  interface Session {
+    user: {
+      _id?: string
+      name?: string | null
+      email?: string | null
+      image?: string | null
+      role?: string
+      profileImage?: string
+      phone?: string
+    } & DefaultSession["user"]
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    _id: string
+    role: string
+  }
+}
+
+
 // Temporary implementations for missing functions
 async function checkExistingUser(email: string): Promise<any> {
   // Simulate checking for an existing user
@@ -32,14 +61,6 @@ function getFilteredUser(user: any) {
   return {name, email, _id, profileImage, role}
 }
 
-type IUser = typeof userRegisterSchema;
-declare module 'next-auth' {
-  interface Session {
-    user: IUser,
-    token: IUser
-  }
-}
-
 export const { handlers, signIn, signOut, auth } = NextAuth({
   session: {
     strategy: "jwt"
@@ -54,15 +75,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const userToCreate = { ...user };
         delete userToCreate.csrfToken;
         delete userToCreate.callbackUrl;
+             console.log("existingUser", user);
 
         const existingUser = await getUser({
           email: user.email,
           role: user.role,
           populate: false
         });
+             console.log("existingUser", existingUser);
 
         if (!existingUser && userToCreate.name) {
-
           await createOrUpdateUser(userToCreate);
           return true;
         }
@@ -85,7 +107,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
              
 
           if (existingUser) {
-             console.log("JWT token:", user, existingUser);
+             console.log("existingUser", existingUser);
 
             if((user as any)?.password === existingUser.password){
               const sanitizedUser = sanitizeMongoObject(existingUser);
@@ -96,7 +118,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 ...sanitizedUser 
               };
 
-             console.log("JWT token:", ret);
+            
               return ret;
             } 
             else 
@@ -106,8 +128,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         if (trigger === 'update' && session?.user) {
           const { iat, exp, jti, ...rest } = session.user;
-          await createOrUpdateUser(rest)
-          return { ...token, ...sanitizeMongoObject(session.user) };
+          log("rest", rest);
+          const a = await createOrUpdateUser(rest);
+          console.log("a", a);
+          return { ...token, ...sanitizeMongoObject(rest) };
         }
 
         return token;

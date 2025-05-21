@@ -1,22 +1,22 @@
 "use client"
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { Menu, X, User, Settings, LogOut, ChevronDown } from "lucide-react"
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { LogoutButton } from "@/components/logout-button"
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Menu, X, User, Settings, LogOut, ChevronDown } from "lucide-react";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { LogoutButton } from "@/components/logout-button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { signOut, useSession } from "next-auth/react"
-import { deleteCookie } from "cookies-next/client"
-import { useRouter } from "next/navigation"
-import Image from "next/image"
+} from "@/components/ui/dropdown-menu";
+import { signOut, useSession } from "next-auth/react";
+import { deleteCookie } from "cookies-next/client";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -153,13 +153,13 @@ export function Header() {
                   </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href={session?.user?.role != "serviceProvider" ? "/user/dashboard" : "/admin/dashboard"}>
+                    <Link href={session?.user?.role != "serviceProvider" ? "/user/dashboard" : "/service-provider"}>
                       <User className="mr-2 h-4 w-4" />
                       <span>Dashboard</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href={session?.user?.role != "serviceProvider" ? "/user/settings" : "/admin/settings"}>
+                    <Link href={session?.user?.role != "serviceProvider" ? "/user/settings" : "/service-provider/settings"}>
                       <Settings className="mr-2 h-4 w-4" />
                       <span>Settings</span>
                     </Link>

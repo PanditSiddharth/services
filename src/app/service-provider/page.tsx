@@ -17,10 +17,13 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { useSession } from "next-auth/react";
-import { getUser } from "../actions/user";
+import { useSession, signOut } from "next-auth/react";
+import { getUser, deleteUser } from "../actions/user";
 import Loading from "../user/dashboard/loading";
 import { getProviderStats } from "../actions/provider";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import Link from "next/link"
+import { toast } from "react-toastify";
 
 // Mock data for demonstration
 const mockServiceProvider = {
@@ -221,27 +224,54 @@ export default function ServiceProviderDashboard() {
       }
     }
   }, [session]);
-
-  const mockServiceProvider = useSession().data?.user as any;
+const user = useSession().data?.user
+  const [mockServiceProvider, setMockServiceProvider] = useState<any>(user);
 
   useEffect(() => {
-    if(mockServiceProvider){
-      getUser({
-        email: mockServiceProvider.email,
+      console.log("User email:", user?.email);
+
+    if(user && user.email) {
+      console.log("User email:", user.email);
+      getUser({ 
+        email: user.email,
         role: "serviceProvider",
-        populate: true
+        populate: true,
+        vars: "+bankDetails",
       }).then((user) => {
+        console.log("User fetched:", user);
         if (user) {
-          Object.assign(mockServiceProvider, user);
+          setMockServiceProvider(user);
         }
       }).catch((error) => {
         console.error("Error fetching user:", error);
       })
     }
-  },[]);
+  },[user?.email]);
 
 
   const [activeTab, setActiveTab] = useState("overview");
+
+  const handleSignOut = async () => {
+    await signOut({ callbackUrl: "/auth/service-provider/login" })
+  }
+
+  const handleDeleteAccount = async () => {
+    if (window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
+      try {
+        const userId = (session?.user as any)?._id;
+        if (!userId) {
+          throw new Error("User ID not found");
+        }
+        
+        await deleteUser(userId);
+        toast.success("Account deleted successfully");
+        await signOut({ callbackUrl: "/auth/service-provider/login" });
+      } catch (error) {
+        console.error("Error deleting account:", error);
+        toast.error("Failed to delete account. Please try again later.");
+      }
+    }
+  }
 
   return (
     !mockServiceProvider ?  <Loading /> : <div className="flex flex-col min-h-screen bg-gray-50">
@@ -270,9 +300,53 @@ export default function ServiceProviderDashboard() {
             <Badge className={mockServiceProvider?.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
               {mockServiceProvider?.isActive ? "Active" : "Inactive"}
             </Badge>
-            <button className="p-2 rounded-full hover:bg-gray-100">
-              <Icons.Settings size={20} />
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="p-2 rounded-full hover:bg-gray-100">
+                  <Icons.Settings size={20} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem asChild>
+                  <Link href="/service-provider/settings" className="flex items-center">
+                    <Icons.User className="mr-2 h-4 w-4" />
+                    <span>Update Details</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/service-provider/referral" className="flex items-center">
+                    <Icons.Gift className="mr-2 h-4 w-4" />
+                    <span>Referral Program</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/service-provider/services" className="flex items-center">
+                    <Icons.List className="mr-2 h-4 w-4" />
+                    <span>Manage Services</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/service-provider/password" className="flex items-center">
+                    <Icons.Lock className="mr-2 h-4 w-4" />
+                    <span>Change Password</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  className="text-red-600 focus:text-red-600"
+                  onClick={handleDeleteAccount}
+                >
+                  <Icons.Trash className="mr-2 h-4 w-4" />
+                  <span>Delete Account</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  className="text-red-600 focus:text-red-600"
+                  onClick={handleSignOut}
+                >
+                  <Icons.LogOut className="mr-2 h-4 w-4" />
+                  <span>Sign Out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
@@ -726,6 +800,7 @@ export default function ServiceProviderDashboard() {
                 </CardContent>
               </Card>
 
+              {/* Bank Details Card */}
               <Card>
                 <CardHeader>
                   <CardTitle>Bank Details</CardTitle>
@@ -734,15 +809,15 @@ export default function ServiceProviderDashboard() {
                 <CardContent className="space-y-4">
                   <div>
                     <h4 className="text-sm font-medium text-gray-500">Account Holder</h4>
-                    <p className="mt-1">{mockServiceProvider?.bankDetails.accountHolderName}</p>
+                    <p className="mt-1">{mockServiceProvider?.bankDetails?.accountHolderName || "Not provided"}</p>
                   </div>
                   <div>
                     <h4 className="text-sm font-medium text-gray-500">Account Number</h4>
-                    <p className="mt-1">{mockServiceProvider?.bankDetails.accountNumber}</p>
+                    <p className="mt-1">{mockServiceProvider?.bankDetails?.accountNumber || "Not provided"}</p>
                   </div>
                   <div>
                     <h4 className="text-sm font-medium text-gray-500">Bank Name</h4>
-                    <p className="mt-1">{mockServiceProvider?.bankDetails.bankName}</p>
+                    <p className="mt-1">{mockServiceProvider?.bankDetails?.bankName || "Not provided"}</p>
                   </div>
                 </CardContent>
               </Card>
