@@ -304,3 +304,29 @@ export async function getReferralStats(providerId: string): Promise<{ success: b
     }
   }
 }
+
+export async function getReferralsByProvider(providerId: string) {
+  try {
+    await dbConnect()
+    const referrals = await Referral.find({ referrer: providerId })
+      .populate('referred', 'name')
+      .sort({ createdAt: -1 })
+      .lean()
+
+    // Transform the data to match ReferralData interface
+    return referrals.map(ref => ({
+      _id: (ref as any)?._id.toString(),
+      referralCode: ref.code,
+      referred: ref.referred ? {
+        _id: ref.referred._id.toString(),
+        name: ref.referred.name
+      } : undefined,
+      status: ref.status,
+      commission: ref.commission || 0,
+      createdAt: ref.createdAt
+    }))
+  } catch (error) {
+    console.error("Error fetching referrals:", error)
+    return []
+  }
+}
