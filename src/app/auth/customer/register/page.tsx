@@ -79,7 +79,7 @@ export default function CustomerRegisterPage() {
         isPhoneVerified: false,
         isEmailVerified: false,
       }
-console.log("userData", userData);
+
       const result = await signIn("credentials", {
         data: JSON.stringify(userData),
         redirect: false,
@@ -91,7 +91,7 @@ console.log("userData", userData);
       }
 
       toast.success("Registration successful!")
-      // router.push("/auth/customer/verify")
+      router.push("/user/dashboard")
     } catch (error) {
       toast.error("An error occurred. Please try again.")
     } finally {

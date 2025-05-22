@@ -5,10 +5,14 @@ import { useSearchParams } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { InfiniteScrollList } from './InfiniteScroll'
 import { getServiceProviders } from '@/app/actions/admin'
-import Provider from './Provider'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { getServices } from '@/app/actions/services' // Add this import
 import ProviderSkeleton from './ProviderSkeleton'
+import { ProviderCard } from './provider-card'
+import { ProviderModal } from './provider-modal'
+import { useRouter } from 'next/navigation'
+import { Input } from "@/components/ui/input"
+import { getPincodeDetails, getCitiesByState, getStates } from "@/lib/postal-api"
 
 interface MainProps {
   initialProviders: any[]
@@ -21,6 +25,13 @@ export default function Main({ initialProviders, hasMore }: MainProps) {
   const [filterBy, setFilterBy] = useState("all")
   const [services, setServices] = useState<{ _id: string; name: string; }[]>([])
   const [isLoading, setIsLoading] = useState(false)  // Changed initial state to false
+  const [selectedProvider, setSelectedProvider] = useState(null)
+  const [pincode, setPincode] = useState("")
+  const [states, setStates] = useState<string[]>([])
+  const [selectedState, setSelectedState] = useState("all")
+  const [cities, setCities] = useState<string[]>([])
+  const [selectedDistrict, setSelectedCity] = useState("all")
+  const router = useRouter()
 
   // Fetch services for filter
   useEffect(() => {
@@ -33,6 +44,17 @@ export default function Main({ initialProviders, hasMore }: MainProps) {
       }
     };
     fetchServices();
+
+    const fetchStates = async () => {
+      try {
+        const statesList = await getStates();
+        setStates(statesList);
+      } catch (error) {
+        console.error('Error loading states:', error);
+        setStates([]);
+      }
+    }
+    fetchStates()
   }, []);
 
   // Reset data when filters change
@@ -45,6 +67,36 @@ export default function Main({ initialProviders, hasMore }: MainProps) {
  
   }, [searchParams])
 
+  // Add new useEffect for pincode handling
+  useEffect(() => {
+    const handlePincodeChange = async () => {
+      if (pincode.length === 6) {
+        const location = await getPincodeDetails(pincode)
+        if (location) {
+          setSelectedState(location.state)
+          setSelectedCity(location.city)
+        }
+      }
+    }
+    handlePincodeChange()
+  }, [pincode])
+
+  // Update state change effect
+  useEffect(() => {
+    const loadCities = async () => {
+      if (selectedState && selectedState !== "all") {
+        setPincode("")  // Clear pincode when state changes
+        const citiesList = await getCitiesByState(selectedState)
+        setCities(citiesList)
+        setSelectedCity("all") // Reset city when state changes
+      } else {
+        setCities([])
+        setSelectedCity("all")
+      }
+    }
+    loadCities()
+  }, [selectedState])
+
   const fetchProviders = useCallback(async (page: number, search: string) => {
     try {
       const { providers, hasMore } = await getServiceProviders(
@@ -53,7 +105,10 @@ export default function Main({ initialProviders, hasMore }: MainProps) {
         search, 
         {
           sortBy,
-          filterBy: filterBy === "all" ? undefined : filterBy
+          filterBy: filterBy === "all" ? undefined : filterBy,
+          state: selectedState === "all" ? undefined : selectedState,
+          city: selectedDistrict === "all" ? undefined : selectedDistrict,
+          pincode: pincode || undefined
         }
       )
 
@@ -68,7 +123,15 @@ export default function Main({ initialProviders, hasMore }: MainProps) {
       console.error("Failed to fetch providers:", error)
       return { data: [], hasMore: false }
     }
-  }, [sortBy, filterBy])
+  }, [sortBy, filterBy, selectedState, selectedDistrict, pincode])
+
+  const handleBook = (provider) => {
+    router.push(`/booking/new?provider=${provider._id}`)
+  }
+
+  const handleViewDetails = (provider) => {
+    setSelectedProvider(provider)
+  }
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -112,6 +175,51 @@ export default function Main({ initialProviders, hasMore }: MainProps) {
               ))}
             </SelectContent>
           </Select>
+
+          <Input
+            type="text"
+            placeholder="Enter Pincode"
+            value={pincode}
+            onChange={(e) => setPincode(e.target.value)}
+            className="w-[180px]"
+            maxLength={6}
+          />
+
+          <Select 
+            value={selectedState} 
+            onValueChange={setSelectedState}
+            disabled={!!pincode}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select State" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All States</SelectItem>
+              {states.map((state) => (
+                <SelectItem key={state} value={state}>
+                  {state}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select 
+            value={selectedDistrict} 
+            onValueChange={setSelectedCity}
+            disabled={!selectedState || selectedState === "all" || !!pincode}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select District" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Cities</SelectItem>
+              {cities.map((city) => (
+                <SelectItem key={city} value={city}>
+                  {city}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <Card>
@@ -125,7 +233,7 @@ export default function Main({ initialProviders, hasMore }: MainProps) {
             ) : (
               <InfiniteScrollList
                 fetchData={fetchProviders}
-                renderItem={(provider) => <Provider provider={provider} />}
+                renderItem={(provider) => <ProviderCard provider={provider} onBook={handleBook} onViewDetails={handleViewDetails} />}
                 initialData={initialProviders.map((p: any) => ({ ...p, _id: p._id }))}
                 initialHasMore={hasMore}
                 searchPlaceholder="Search providers by name or service..."
@@ -135,6 +243,12 @@ export default function Main({ initialProviders, hasMore }: MainProps) {
             )}
           </CardContent>
         </Card>
+
+        <ProviderModal
+          provider={selectedProvider}
+          isOpen={!!selectedProvider}
+          onClose={() => setSelectedProvider(null)}
+        />
       </div>
     </div>
   )

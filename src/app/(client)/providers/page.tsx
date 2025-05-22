@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react'
 import Provider from './components/main'
 import { getServiceProviders } from '@/app/actions/admin'
-import { Metadata } from "next"
 
 const Page = () => {
   const [initialProviders, setInitialProviders] = useState([])
@@ -11,20 +10,10 @@ const Page = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const searchParams = new URLSearchParams(window.location.search)
-      const service = searchParams.get("service") || ""
-
-      const { providers, hasMore } = await getServiceProviders(
-        1,
-        10,
-        "",
-        { filterBy: service }
-      )
-
+      const { providers, hasMore } = await getServiceProviders(1, 10)
       setInitialProviders(providers as any)
       setHasMore(hasMore)
     }
-
     fetchData()
   }, [])
 
@@ -36,5 +25,4 @@ const Page = () => {
   )
 }
 
-// Note: metadata needs to be moved to layout.tsx since it can't be used in client components
 export default Page

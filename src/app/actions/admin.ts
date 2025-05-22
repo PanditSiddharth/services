@@ -174,131 +174,59 @@ export async function getUsers(page = 1, limit = 10, search = "") {
   }
 
 export async function getServiceProviders(
-  page = 1, 
-  limit = 10, 
-  search = "", 
-  options: { 
-    sortBy?: string, 
-    filterBy?: string 
-  } = {}
+  page = 1,
+  limit = 10,
+  searchQuery = "",
+  filters: any = {}
 ) {
   try {
-    await dbConnect()
-    console.log("Fetching service providers with options:", { page, limit, search, options })
-    // Build base query
+    await dbConnect();
+
     const query: any = {};
     
-    // Add search filter
-    if (search) {
+    // Search filter
+    if (searchQuery) {
       query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
-        { phone: { $regex: search, $options: 'i' } },
-        { 'address.city': { $regex: search, $options: 'i' } },
-        { 'address.state': { $regex: search, $options: 'i' } }
+        { name: { $regex: searchQuery, $options: "i" } },
+        { email: { $regex: searchQuery, $options: "i" } },
       ];
     }
 
-    // Convert filterBy to ObjectId if provided
-    if (options.filterBy && options.filterBy !== 'all') {
-      try {
-        query.profession = new Types.ObjectId(options.filterBy);
-        console.log("Filter query:", query);
-      } catch (err) {
-        console.error("Invalid ObjectId for profession filter:", options.filterBy);
-      }
+    // Service type filter
+    if (filters.filterBy) {
+      query.profession = filters.filterBy;
     }
 
-    // Determine sort options
-    let sort: any = { createdAt: -1 }; // default sort
-    switch (options.sortBy) {
-      case 'rating':
-        sort = { rating: -1 };
-        break;
-      case 'experience':
-        sort = { experience: -1 };
-        break;
-      case 'reviews':
-        sort = { totalReviews: -1 };
-        break;
-      case 'bookings':
-        sort = { totalBookings: -1 };
-        break;
+    // Address filters
+    if (filters.state) {
+      query["address.state"] = filters.state;
+    }
+    if (filters.city) {
+      query["address.city"] = filters.city;
     }
 
-    // Calculate pagination
-    const skip = (page - 1) * limit;
-    
-    // Log the complete pipeline for debugging
-    const pipeline = [
-      { $match: query },
-      { $sort: sort },
-      { $skip: skip },
-      { $limit: limit },
-      {
-        $lookup: {
-          from: 'services',
-          localField: 'profession',
-          foreignField: '_id',
-          as: 'professionDetails'
-        }
-      },
-      {
-        $addFields: {
-          profession: { $arrayElemAt: ['$professionDetails.name', 0] }
-        }
-      },
-      {
-        $project: {
-          professionDetails: 0,
-          password: 0,
-          __v: 0
-        }
-      }
-    ];
-
-    console.log("Aggregation pipeline:", JSON.stringify(pipeline, null, 2));
-
-    // Execute aggregation with error catching
-    const providers = await ServiceProvider.aggregate(pipeline).catch(err => {
-      console.error("Aggregation error:", err);
-      return [];
-    });
-    
-    console.log("Found providers:", providers.length);
-    
-    const totalCount = await ServiceProvider.countDocuments(query);
-    
-    const hasMore = skip + providers.length < totalCount;
-    
-    // Format the response with unique entries
-    const formattedProviders = providers.map(provider => ({
-      _id: provider._id.toString(),
-      name: provider.name,
-      email: provider.email,
-      phone: provider.phone,
-      profileImage: provider.profileImage,
-      profession: provider.profession || '',
-      experience: provider.experience,
-      address: provider.address,
-      isAvailable: provider.availability?.isAvailable || false,
-      isVerified: provider.isVerified,
-      isActive: provider.isActive,
-      rating: provider.rating,
-      totalReviews: provider.totalReviews,
-      totalBookings: provider.totalBookings,
-      completedBookings: provider.completedBookings,
-      createdAt: provider.createdAt.toISOString()
-    }));
-    
-    return {
-      providers: formattedProviders,
-      hasMore
+    // Sort options
+    const sortOptions: any = {
+      rating: { rating: -1 },
+      experience: { experience: -1 },
+      reviews: { totalReviews: -1 },
+      bookings: { totalBookings: -1 },
     };
 
+    const providers = await ServiceProvider.find(query)
+      .populate('profession', 'name icon')
+      .sort(sortOptions[filters.sortBy] || { rating: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+
+    const total = await ServiceProvider.countDocuments(query);
+    const hasMore = total > page * limit;
+
+    return JSON.parse(JSON.stringify({ providers, hasMore }));
   } catch (error) {
-    console.error('Error fetching service providers:', error);
-    throw new Error('Failed to fetch service providers');
+    console.error("Error fetching providers:", error);
+    return { providers: [], hasMore: false };
   }
 }
 
@@ -332,7 +260,7 @@ export async function getServiceProviders(
         .lean();
       
       // Map MongoDB documents to the expected format
-      const formattedServices = services.map(service => ({
+      const formattedServices = services?.map(service => ({
         _id: service?._id?.toString(),
         name: service.name,
         slug: service.slug,
@@ -352,10 +280,10 @@ export async function getServiceProviders(
         updatedAt: service.updatedAt.toISOString()
       }));
       
-      return {
+      return JSON.parse(JSON.stringify({
         services: formattedServices,
         hasMore
-      };
+      }))
     } catch (error) {
       console.error('Error fetching services:', error);
       throw new Error('Failed to fetch services');

@@ -26,6 +26,8 @@ import {
     Loader2,
     LucideProps,
     Link,
+    Star,
+    MapPin
   } from "lucide-react"
   
   export const Icons = {
@@ -54,4 +56,6 @@ import {
     Copy: (props: LucideProps) => <Copy {...props} />,
     Loader2: (props: LucideProps) => <Loader2 {...props} />,
     Link: (props: LucideProps) => <Link {...props} />,
+    Star: (props: LucideProps) => <Star {...props} />,
+    MapPin: (props: LucideProps) => <MapPin {...props} />,
   }

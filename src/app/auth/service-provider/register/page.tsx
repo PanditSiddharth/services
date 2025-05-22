@@ -7,7 +7,6 @@ import * as z from "zod"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ChevronLeft, Upload, Loader2 } from "lucide-react"
-
 import { Button } from "@/components/ui/button"
 import { Form } from "@/components/ui/form"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -17,7 +16,6 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "react-toastify"
-import { registerProvider } from "@/app/actions/auth"
 import { getServices } from "@/app/actions/services"
 import { signIn } from "next-auth/react"
 import { uploadImage } from "@/app/actions/cloudinary"
@@ -125,27 +123,27 @@ export default function ProviderRegisterPage() {
     try {
       const image = "https://res.cloudinary.com/panditsiddharth/image/upload/v1746615171/services-app/d3zbbp2pwlvuzl8hsadz.jpg"
       
-      // Updated referral handling
-      if (values.referralCode && referralValidation?.success) {
-        const formattedData = {
-          ...values,
-          role: "serviceProvider",
-          profileImage: image || "/profile-image.jpg",
-        }
+      // Remove the referral code check to allow submission without referral
+      const formattedData = {
+        ...values,
+        role: "serviceProvider",
+        profileImage: image || "/profile-image.jpg",
+      }
 
-        const result = await signIn("credentials", {
-          data: JSON.stringify(formattedData),
-          redirect: false,
-        });
+      const result = await signIn("credentials", {
+        data: JSON.stringify(formattedData),
+        redirect: false,
+      });
 
-        if (result?.error) {
-          toast.error("Registration failed. Please try again.");
-        } else {
-          // Complete the referral after successful registration
+      if (result?.error) {
+        toast.error("Registration failed. Please try again.");
+      } else {
+        // Only complete referral if code exists and is validated
+        if (values.referralCode && referralValidation?.success) {
           await completeReferral(values.referralCode, (result as any)?.user?._id);
-          toast.success("Registration successful!");
-          // router.push("/service-provider/dashboard");
         }
+        toast.success("Registration successful!");
+        router.push("/service-provider");
       }
     } catch (error) {
       console.error("Registration error:", error)
@@ -644,7 +642,11 @@ export default function ProviderRegisterPage() {
                       Next
                     </Button>
                   ) : (
-                    <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={isSubmitting}>
+                    <Button 
+                      type="submit" 
+                      className="bg-blue-600 hover:bg-blue-700" 
+                      disabled={isSubmitting}
+                    >
                       {isSubmitting ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />

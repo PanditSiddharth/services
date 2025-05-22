@@ -279,8 +279,21 @@ const user = useSession().data?.user
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8 flex justify-between items-center">
           <div className="flex items-center">
-            <div className="h-12 w-12 rounded-full bg-blue-500 flex items-center justify-center text-white mr-4">
-              <Icons.Electric size={24} />
+            <div className="relative h-12 w-12 mr-4">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full animate-pulse"></div>
+              <div className="relative h-full w-full rounded-full overflow-hidden border-2 border-sky-200 shadow-lg">
+                {mockServiceProvider?.profileImage ? (
+                  <img 
+                    src={mockServiceProvider.profileImage} 
+                    alt={mockServiceProvider.name} 
+                    className="h-full w-full object-cover transition-transform duration-200 hover:scale-110"
+                  />
+                ) : (
+                  <div className="h-full w-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xl font-bold">
+                    {mockServiceProvider?.name?.charAt(0)}
+                  </div>
+                )}
+              </div>
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">

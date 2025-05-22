@@ -204,6 +204,13 @@ async function seedServiceProviders(count = 100) {
         totalBookings: Math.floor(Math.random() * 200),
         completedBookings: Math.floor(Math.random() * 150),
         createdAt: new Date(Date.now() - Math.floor(Math.random() * 10000000000)),
+        bankDetails: {
+          accountHolderName: `Provider ${i + 1}`,
+          accountNumber: `${Math.floor(10000000000 + Math.random() * 90000000000)}`,
+          ifscCode: `BANK${Math.floor(1000 + Math.random() * 9000)}`,
+          bankName: ["HDFC Bank", "ICICI Bank", "State Bank of India", "Axis Bank", "Punjab National Bank"][Math.floor(Math.random() * 5)],
+          branch: ["Main Branch", "City Branch", "Downtown Branch", "Central Branch", "Regional Branch"][Math.floor(Math.random() * 5)]
+        },
       });
     }
 

@@ -144,11 +144,18 @@ const bookingSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    bookingSlot: {
+      date: { type: Date, required: true },
+      time: { type: String, required: true }
+    },
   },
   {
     timestamps: true,
   },
 )
+
+// Add index for faster slot availability queries
+bookingSchema.index({ 'bookingSlot.date': 1, 'serviceProvider': 1 })
 
 const Booking = mongoose.models?.Booking || mongoose.model("Booking", bookingSchema)
 
