@@ -21,6 +21,7 @@ import { signIn } from "next-auth/react"
 import { uploadImage } from "@/app/actions/cloudinary"
 import { validateReferralCode, completeReferral } from "@/app/actions/referral"
 import { createOrUpdateUser } from "@/app/actions/user"
+import { getPincodeDetails, getCitiesByState, getStates } from "@/lib/postal-api"
 
 // Updated schema to match MongoDB model
 const formSchema = z.object({
@@ -79,6 +80,9 @@ export default function ProviderRegisterPage() {
   const [profileImage, setProfileImage] = useState("/profile-image.jpg")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [referralValidation, setReferralValidation] = useState<ReferralValidationResult | null>(null);
+  const [states, setStates] = useState<string[]>([])
+  const [cities, setCities] = useState<string[]>([])
+  const [isLoadingCities, setIsLoadingCities] = useState(false)
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -252,6 +256,53 @@ export default function ProviderRegisterPage() {
       handleVerifyReferralCode()
     }
   }, [])
+
+  // Load states on mount
+  useEffect(() => {
+    const loadStates = async () => {
+      try {
+        const statesList = await getStates()
+        setStates(statesList)
+      } catch (error) {
+        console.error('Error loading states:', error)
+        toast.error('Failed to load states')
+      }
+    }
+    loadStates()
+  }, [])
+
+  // Handler for state change
+  const handleStateChange = async (state: string) => {
+    form.setValue('address.state', state)
+    form.setValue('address.city', '') // Reset city when state changes
+    setIsLoadingCities(true)
+    try {
+      const citiesList = await getCitiesByState(state)
+      setCities(citiesList)
+    } catch (error) {
+      console.error('Error loading cities:', error)
+      toast.error('Failed to load cities')
+    } finally {
+      setIsLoadingCities(false)
+    }
+  }
+
+  // Handler for pincode change
+  const handlePincodeChange = async (pincode: string) => {
+    if (pincode.length === 6) {
+      try {
+        const details = await getPincodeDetails(pincode)
+        if (details) {
+          form.setValue('address.state', details.state)
+          form.setValue('address.city', details.city)
+          handleStateChange(details.state)
+        }
+      } catch (error) {
+        console.error('Error fetching pincode details:', error)
+        toast.error('Invalid pincode')
+      }
+    }
+  }
 
   return (
     <div className="container mx-auto py-10 px-4 md:px-6">
@@ -436,28 +487,57 @@ export default function ProviderRegisterPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <Label htmlFor="address.city">City</Label>
-                        <Input id="address.city" {...form.register("address.city")} placeholder="Mumbai" />
-                        {form.formState.errors["address.city"] && (
-                          <p className="text-sm text-red-500">{form.formState.errors["address.city"].message}</p>
+                        <Label htmlFor="address.pincode">Pincode</Label>
+                        <Input 
+                          id="address.pincode" 
+                          {...form.register("address.pincode")}
+                          onChange={(e) => handlePincodeChange(e.target.value)}
+                          placeholder="400001" 
+                          maxLength={6}
+                        />
+                        {form.formState.errors["address.pincode"] && (
+                          <p className="text-sm text-red-500">{form.formState.errors["address.pincode"].message}</p>
                         )}
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="address.state">State</Label>
-                        <Input id="address.state" {...form.register("address.state")} placeholder="Maharashtra" />
-                        {form.formState.errors["address.state"] && (
-                          <p className="text-sm text-red-500">{form.formState.errors["address.state"].message}</p>
-                        )}
+                        <Label>State</Label>
+                        <Select
+                          value={form.watch("address.state")}
+                          onValueChange={handleStateChange}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select state" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {states.map((state) => (
+                              <SelectItem key={state} value={state}>
+                                {state}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <Label htmlFor="address.pincode">Pincode</Label>
-                        <Input id="address.pincode" {...form.register("address.pincode")} placeholder="400001" />
-                        {form.formState.errors["address.pincode"] && (
-                          <p className="text-sm text-red-500">{form.formState.errors["address.pincode"].message}</p>
-                        )}
+                        <Label>City</Label>
+                        <Select
+                          value={form.watch("address.city")}
+                          onValueChange={(city) => form.setValue("address.city", city)}
+                          disabled={!form.watch("address.state") || isLoadingCities}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={isLoadingCities ? "Loading cities..." : "Select city"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {cities.map((city) => (
+                              <SelectItem key={city} value={city}>
+                                {city}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="address.landmark">Landmark (Optional)</Label>
