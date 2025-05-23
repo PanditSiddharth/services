@@ -6,54 +6,83 @@ import { getToken } from 'next-auth/jwt';
 
 const { auth } = NextAuth(auth_config);
 
+// Define public paths that don't need authentication
+const publicPaths = [
+  "/",
+  "/about",
+  "/contact",
+  "/services",
+  "/api/webhook",
+];
+
+
+// Define protected paths by role
+const protectedPaths = {
+  admin: "/admin",
+  serviceProvider: "/service-provider",
+  user: "/customer"
+};
+
 export default auth(async (request: any) => {
-  const { pathname } = request.nextUrl;
-  const user = await getToken({ 
-    req: request, 
-    secret: process.env.AUTH_SECRET, 
+  const { pathname } = request.nextUrl
+  const p = pathname?.toLowerCase();
+
+  const user = await getToken({
+    req: request,
+    secret: process.env.AUTH_SECRET,
     cookieName: "user",
-    raw: false 
+    raw: false
   });
-// console.log({user}, "middleware");
-  // Default auth routing
-  if (pathname === "/auth" && !user) {
-    // Redirect to customer login by default
-    return NextResponse.redirect(new URL("/auth/user/login", request.url));
+
+  if (p.startsWith("/admin") && user) {
+    // Redirect to respective dashboard based on role
+    if (user?.role == "user")
+      return NextResponse.redirect(new URL("/customer/dashboard", request.url));
+    else if (user.role == "serviceProvider")
+      return NextResponse.redirect(new URL("/service-provider", request.url));
   }
 
-  const isLogged = !!user;
-  const authRoute = '/auth';
-  
-  // Protect admin routes - only providers can access
-  // if (pathname.startsWith("/admin")) {
-  //   if (!user) {
-  //     return NextResponse.redirect(new URL("/auth/provider/login", request.url))
-  //   }
+  if (p.startsWith("/user") && user) {
+    if (user.role == "serviceProvider")
+      return NextResponse.redirect(new URL("/service-provider", request.url));
+  }
 
-  //   if (user.role !== "provider") {
-  //     return NextResponse.redirect(new URL("/auth/provider/login", request.url))
-  //   }
-  // }
+  if (p.startsWith("/service-provider") && user) {
+    if (user.role == "user")
+      return NextResponse.redirect(new URL("/customer/dashboard", request.url));
+    else if (user.role == "admin")
+      return NextResponse.redirect(new URL("/admin/dashboard", request.url));
+  }
 
-  // // Protect user-specific routes
-  // if (pathname.startsWith("/user")) {
-  //   if (!user) {
-  //     return NextResponse.redirect(new URL("/auth/user/login", request.url))
-  //   }
+  // Check if trying to access auth pages while logged in
+  if (p?.startsWith("/auth") && user) {
+    // Redirect to respective dashboard based on role
+    if (user.role == "user")
+      return NextResponse.redirect(new URL("/customer/dashboard", request.url));
+    else if (user.role == "serviceProvider")
+      return NextResponse.redirect(new URL("/service-provider", request.url));
+    else if (user.role == "admin")
+      return NextResponse.redirect(new URL("/admin/dashboard", request.url));
+  }
 
-  //   if (user?.role !== "user") {
-  //     return NextResponse.redirect(new URL("/auth/user/login", request.url))
-  //   }
-  // }
+  if ((p?.startsWith("/user") || p?.startsWith("/admin")) && !user) {
+    // Redirect to login page if not authenticated
+    return NextResponse.redirect(new URL("/auth/customer/login", request.url));
+  }
 
-  // // Redirect authenticated users away from auth pages
-  // if (pathname.startsWith("/auth") && user) {
-  //   if (user.role === "provider") {
-  //     return NextResponse.redirect(new URL("/admin/dashboard", request.url))
-  //   } else {
-  //     return NextResponse.redirect(new URL("/", request.url))
-  //   }
-  // }
-
-  return NextResponse.next();
+  if (p?.startsWith("/service-provider") && !user) {
+    // Redirect to login page if not authenticated
+    return NextResponse.redirect(new URL("/auth/service-provider/login", request.url));
+  }
 });
+
+// Configure middleware path matcher
+export const config = {
+  matcher: [
+    // Match all paths except:
+    // - Next.js internals
+    // - API authentication routes
+    // - Static files
+    "/((?!api/auth|_next|fonts|images|[\\w-]+\\.\\w+).*)",
+  ],
+};
