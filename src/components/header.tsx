@@ -246,14 +246,14 @@ export function Header() {
                     </div>
                   </div>
                   <Link
-                    href={session?.user?.role != "serviceProvider" ? "/user/dashboard" : "/admin/dashboard"}
+                    href={session?.user?.role != "serviceProvider" ? "/user/dashboard" : "/service-provider"}
                     onClick={closeMenu}
                     className="text-sm font-medium text-gray-600 hover:text-primary"
                   >
                     Dashboard
                   </Link>
                   <Link
-                    href={session?.user?.role != "serviceProvider" ? "/user/profile" : "/admin/profile"}
+                    href={session?.user?.role != "serviceProvider" ? "/user/profile" : "/service-provider"}
                     onClick={closeMenu}
                     className="text-sm font-medium text-gray-600 hover:text-primary"
                   >
