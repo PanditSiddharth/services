@@ -41,11 +41,7 @@ interface ServiceProviderProps {
   selectedTime?: string
 }
 
-export function ProviderCard({ 
-  provider,
-  onBook,
-  onViewDetails 
-}: { 
+export function ProviderCard({ provider, onBook, onViewDetails }: { 
   provider: ServiceProviderProps,
   onBook: (provider: ServiceProviderProps) => void,
   onViewDetails: (provider: ServiceProviderProps) => void
@@ -53,73 +49,90 @@ export function ProviderCard({
   const [showBooking, setShowBooking] = useState(false)
 
   return (
-    <Card className="h-full flex flex-col">
-      <CardContent className="p-4 flex-1">
-        <div className="flex gap-4">
-          <div className="relative h-20 w-20 flex-shrink-0">
+    <Card className="w-[300px] bg-white hover:shadow-lg transition-shadow">
+      <CardContent className="p-4">
+        {/* Header: Image + Basic Info */}
+        <div className="flex gap-4 mb-4">
+          {/* Left: Profile Image */}
+          <div className="relative h-[80px] w-[80px] rounded-lg overflow-hidden flex-shrink-0">
             <Image
               src={provider.profileImage || "/placeholder.svg"}
               alt={provider.name}
               fill
-              className="object-cover rounded-lg"
+              className="object-cover"
             />
           </div>
-          <div className="flex-1">
-            <div className="flex items-start justify-between">
-              <div>
-                <h3 className="font-semibold flex items-center gap-2">
-                  {provider.name}
-                  {provider.isVerified && (
-                    <Badge variant="secondary">
-                      <Icons.Check className="h-3 w-3" />
-                    </Badge>
-                  )}
-                  {!provider.isActive && (
-                    <Badge variant="destructive" className="ml-2">Inactive</Badge>
-                  )}
-                </h3>
-                <p className="text-sm text-muted-foreground">{provider.profession?.name}</p>
-              </div>
-              {provider.availability?.isAvailable && provider.isActive && (
-                <Badge variant="default" className="ml-2">Available</Badge>
+
+          {/* Right: Name, Profession, Badges */}
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold truncate">{provider.name}</h3>
+            <p className="text-sm text-muted-foreground truncate mb-2">
+              {provider.profession?.name}
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {provider.isVerified && (
+                <Badge variant="secondary" className="h-5">
+                  <Icons.Check className="w-3 h-3 mr-1" />
+                  Verified
+                </Badge>
               )}
-            </div>
-            
-            <div className="grid grid-cols-2 gap-2 mt-2 text-sm">
-              <div className="flex items-center gap-1">
-                <Icons.Star className="h-4 w-4 text-yellow-400" />
-                <span>{provider.rating}</span>
-                <span className="text-muted-foreground">({provider.totalReviews})</span>
-              </div>
-              <div className="text-muted-foreground">
-                {provider.experience} years exp.
-              </div>
-              <div className="text-muted-foreground">
-                <Icons.MapPin className="h-4 w-4 inline mr-1" />
-                {provider.address.city}
-              </div>
-              <div className="text-muted-foreground">
-                {provider.completedBookings} jobs done
-              </div>
+              {provider.availability?.isAvailable && provider.isActive && (
+                <Badge className="bg-green-500 text-white border-0 h-5">
+                  Available
+                </Badge>
+              )}
             </div>
           </div>
         </div>
-        
-        <div className="flex gap-2 mt-4">
+
+        {/* Rating Bar */}
+        <div className="flex items-center justify-between bg-orange-50 px-3 py-2 rounded-md mb-4">
+          <div className="flex items-center gap-1.5">
+            <Icons.Star className="w-4 h-4 text-orange-400 fill-orange-400" />
+            <span className="font-medium">{provider.rating}</span>
+          </div>
+          <div className="text-sm text-muted-foreground">
+            {provider.totalReviews} reviews
+          </div>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 gap-2 text-sm mb-4">
+          <div className="flex items-center text-muted-foreground">
+            <Icons.Clock className="w-4 h-4 mr-1.5" />
+            <span>{provider.experience}y exp</span>
+          </div>
+          <div className="flex items-center text-muted-foreground">
+            <Icons.MapPin className="w-4 h-4 mr-1.5" />
+            <span className="truncate">{provider.address.city}</span>
+          </div>
+          <div className="flex items-center text-muted-foreground">
+            <Icons.CheckCircle className="w-4 h-4 mr-1.5" />
+            <span>{provider.completedBookings} done</span>
+          </div>
+          <div className="flex items-center text-muted-foreground">
+            <Icons.Calendar className="w-4 h-4 mr-1.5" />
+            <span>{provider.totalBookings} total</span>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-2">
+          <Button
+            className="flex-1"
+            onClick={() => setShowBooking(true)}
+            disabled={!provider.availability?.isAvailable || !provider.isActive}
+          >
+            {provider.availability?.isAvailable && provider.isActive 
+              ? "Book Now" 
+              : "Unavailable"}
+          </Button>
           <Button 
             variant="outline"
             className="flex-1"
             onClick={() => onViewDetails(provider)}
           >
-            View Details
-          </Button>
-          <Button
-            className="flex-1"
-            onClick={() => setShowBooking(true)}
-          >
-            {provider.availability?.isAvailable && provider.isActive 
-              ? "Check Slots" 
-              : "Contact Provider"}
+            View
           </Button>
         </div>
       </CardContent>

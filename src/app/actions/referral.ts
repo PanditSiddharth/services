@@ -1,61 +1,89 @@
 "use server"
-
 import dbConnect from "@/lib/db-connect"
-import Referral from "@/models/referral"
-import ReferralHistory from "@/models/referral-history"
-import mongoose from "mongoose"
-import type { FormattedReferralData } from "@/types/referral"
-// Ensure FormattedReferralData is exported from "@/types/referral"
+import { ServiceProvider } from "@/models"
 
 // Add this helper function at the top
-function serializeMongoObject<T>(obj: T): T {
+function serialize<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj))
 }
 
-export async function validateReferralCode(code: string) {
+export async function validateReferralCode(code: string): Promise<{
+  success: boolean
+  message?: string
+  data?: {
+    referrerId: string
+    referrerName: string
+    referred: string[]
+  }
+}> {
   try {
     await dbConnect()
-    const referral = await Referral.findOne({ 
-      referralCode: code,
-      status: 'pending'
-    }).populate('referrer', '_id name')
+    const referral = await ServiceProvider.findOne({
+      referralCode: code
+    }, "_id name referred createdAt")
 
     if (!referral) {
-      return { 
-        success: false, 
-        message: "Invalid or expired referral code" 
+      return {
+        success: false,
+        message: "Invalid or expired referral code"
+      }
+      
+    } else if (new Date().getTime() - new Date(referral.createdAt).getTime() > 35 * 24 * 60 * 60 * 1000) {
+      // check if user has crossed 35 days since creation, they can't refer
+      return {
+        success: false,
+        message: "Referral code expired after 35 days"
+      }
+    } else if (referral?.referred?.length > 2) {
+      return {
+        success: false,
+        message: "They Can't refer more! limit exceeded"
       }
     }
 
-    // Serialize the MongoDB objects
-    const serializedData = {
-      _id: referral._id.toString(),
-      referralCode: referral.referralCode,
-      referrer: {
-        _id: referral.referrer._id.toString(),
-        name: referral.referrer.name
-      }
-    }
-
-    return {
+    return serialize({
       success: true,
-      referral: serializedData
-    }
+      data: {
+        referrerId: referral._id,
+        referrerName: referral.name,
+        referred: referral.referred,
+      }
+    })
   } catch (error) {
     console.error("Referral validation error:", error)
     return { success: false, message: "Failed to validate referral code" }
   }
 }
 
-export async function generateReferralToken(providerId: string, customCode?: string): Promise<any> {
+const generateUniqueCode = async (attempts = 5): Promise<string | null> => {
+  for (let i = 0; i < attempts; i++) {
+    const code = Array.from({ length: 6 }, () =>
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'[Math.floor(Math.random() * 36)]
+    ).join('')
+
+    const exists = await ServiceProvider.findOne({ referralCode: code })
+    if (!exists) return code
+  }
+  return null
+}
+
+export async function generateReferralToken(providerId: string, customCode?: string): Promise<{
+  success: boolean
+  message?: string
+  data?: {
+    referralCode: string
+    link: string
+  }
+}> {
   try {
     await dbConnect()
 
+    // Handle custom code
     if (customCode) {
-      const exists = await Referral.findOne({ 
-        referralCode: customCode.toUpperCase() 
+      const exists = await ServiceProvider.findOne({
+        referralCode: customCode.toUpperCase()
       })
-      
+
       if (exists) {
         return {
           success: false,
@@ -64,78 +92,112 @@ export async function generateReferralToken(providerId: string, customCode?: str
       }
     }
 
-    // Check number of active referrals
-    const activeCount = await Referral.countDocuments({
-      referrer: providerId,
-      status: 'pending'
-    })
+    // Generate unique code or use custom code
+    const referralCode = customCode ? customCode.toUpperCase() : await generateUniqueCode()
 
-    if (activeCount >= 5) {
+    if (!referralCode) {
       return {
         success: false,
-        message: "You can only have 5 active referral codes at a time."
+        message: "Failed to generate unique code. Please try again."
       }
     }
 
-    // Create new referral
-    const newReferral = await Referral.create({
-      referrer: providerId,
-      referralCode: customCode ? customCode.toUpperCase() : generateRandomCode(),
-      status: 'pending'
-    })
+    // Update provider with new code
+    const result = await ServiceProvider.findByIdAndUpdate(
+      providerId,
+      { referralCode },
+      { new: true }
+    )
+
+    if (!result) {
+      return {
+        success: false,
+        message: "Provider not found"
+      }
+    }
 
     return {
       success: true,
       data: {
-        code: newReferral.referralCode,
-        link: `${process.env.NEXT_PUBLIC_APP_URL}/auth/service-provider/register?ref=${newReferral.referralCode}`,
-        createdAt: newReferral.createdAt,
-        progress: 0,
-        status: 'pending'
+        referralCode,
+        link: `${process.env.NEXT_PUBLIC_APP_URL}/auth/service-provider/register?ref=${referralCode}`
       }
     }
   } catch (error) {
     console.error("Error:", error)
-    return { success: false, message: "Failed to generate referral code" }
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to generate referral code"
+    }
   }
 }
 
-// Helper function to generate random code
-function generateRandomCode() {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-  let code = ''
-  for (let i = 0; i < 6; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length))
+async function updateLevel(userId: string, depth = 0, maxDepth = 10): Promise<boolean | undefined> {
+  try {
+    if (depth >= maxDepth) return true;
+
+    const user = await ServiceProvider.findById(userId)
+      .select('level referrer')
+      .populate('referrer', 'level');
+    // {
+    //   level,
+    //   referrer: {
+    //     _id,
+    //     level
+    //   }
+    // }
+
+    if (!user) return false;
+    if (!user.referrer) return true; // No referrer, no need to update
+
+    if (user.level > 10) {
+      // Reset the user level if it exceeds 10
+      await ServiceProvider.findByIdAndUpdate(userId, { level: 0, referrer: null, referred: [] });
+      return true
+    }
+    // Calculate new level based on referrer's level
+    const referrerLevel = user.referrer?.level || 0;
+    const currentLevel = user.level || 0;
+
+    // Only update if referer level is low or equal to downline users level
+    if (referrerLevel <= currentLevel) {
+      await ServiceProvider.findByIdAndUpdate(user?.referrer?._id, { level: referrerLevel + 1 });
+
+      return await updateLevel(user?.referrer?._id, depth + 1, maxDepth);
+    }
+  } catch (error) {
+    console.error("Error updating levels:", error);
+    return false;
   }
-  return code
 }
 
-export async function completeReferral(referralCode: string, newUserId: string) {
+export async function completeReferral(referralCode: string, newUserId: string): Promise<{
+  success: boolean
+  message?: string
+}> {
   try {
     await dbConnect()
-    const referral = await Referral.findOne({ 
-      referralCode,
-      status: 'pending'
-    })
+    const referral = await validateReferralCode(referralCode)
 
-    if (!referral) {
+    if (!referral?.success) {
       return { success: false, message: "Invalid or expired referral" }
     }
 
-    // Create history record
-    await ReferralHistory.create({
-      referrer: referral.referrer,
-      referralCode: referral.referralCode,
-      referred: newUserId,
-      status: 'completed',
-      completedAt: new Date(),
-      commission: referral.commission
+    await ServiceProvider.updateOne(
+      { _id: referral?.data?.referrerId },
+      {
+        $push: { referred: newUserId } // Push newUserId into the referred array
+      }
+    )
+
+    await ServiceProvider.findByIdAndUpdate(newUserId, {
+      referrer: referral?.data?.referrerId
     })
 
-    // Update referral status
-    referral.referred = newUserId
-    referral.status = 'completed'
-    await referral.save()
+    // because now it will be 3 users refered so we will update level of referrer users
+    if (referral?.data?.referred?.length == 2)
+      // Update levels starting from the new user
+      await updateLevel(newUserId);
 
     return { success: true }
   } catch (error) {
@@ -144,27 +206,15 @@ export async function completeReferral(referralCode: string, newUserId: string) 
   }
 }
 
-export async function revokeReferral(referralCode: string) {
+export async function revokeReferral(referralCode: string): Promise<{
+  success: boolean
+  message?: string
+}> {
   try {
     await dbConnect()
-    const referral = await Referral.findOne({ referralCode })
-    
-    if (!referral) {
-      return { success: false, message: "Referral not found" }
-    }
-
-    // Create history record
-    await ReferralHistory.create({
-      referrer: referral.referrer,
-      referralCode: referral.referralCode,
-      referred: referral.referred,
-      status: 'revoked',
-      revokedAt: new Date(),
-      commission: referral.commission
-    })
-
-    // Delete the referral
-    await referral.deleteOne()
+    const referral = await ServiceProvider.updateOne({
+      referralCode
+    }, { referralCode: null })
 
     return { success: true }
   } catch (error) {
@@ -173,160 +223,97 @@ export async function revokeReferral(referralCode: string) {
   }
 }
 
-export async function revokeReferralCode(providerId: string, referralCode: string) {
-  try {
-    await dbConnect()
-    
-    // First check if referral has any progress
-    const referral = await Referral.findOne({ 
-      referrer: providerId,
-      referralCode: referralCode,
-      status: 'pending'
-    }).populate('referred')
+interface BasicUser {
+  _id: string
+  name: string
+  profileImage?: string
+  profession: string
+};
 
-    if (!referral) {
-      return { success: false, message: "No active referral found" }
+interface ReferralStats {
+  success: boolean
+  message?: string
+  data?: {
+    me?: BasicUser & {
+      level?: string,
+      profession: {
+        _id: string
+        name: string
+      },
+      referralCode?: {
+        code: string
+        link: string
+      }
+    },
+    referrer?: BasicUser,
+    referred?: BasicUser[],
+    currentCode?: {
+      code: string
+      link: string
     }
-
-    // If no one has used this code (progress = 0), delete it
-    if (!referral.referred) {
-      await referral.deleteOne()
-      return { success: true }
-    }
-
-    // Otherwise mark as revoked
-    referral.status = 'revoked'
-    referral.revokedAt = new Date()
-    await referral.save()
-
-    return { success: true }
-  } catch (error) {
-    console.error("Revoke error:", error)
-    return { success: false, message: "Failed to revoke referral code" }
   }
-}
+};
 
-export async function getReferralStats(providerId: string): Promise<{ success: boolean; data?: FormattedReferralData; message?: string }> {
+export const getReferralStats = async (providerId: string): Promise<ReferralStats> => {
   try {
     await dbConnect()
-    
-    const allReferrals = await Referral.find({ referrer: providerId })
-      .populate('referred', 'name')
+
+    const sp: any = await ServiceProvider.findOne(
+      { _id: providerId }
+    )
+      .select('_id name level profileImage profession referralCode referred referrer')
+      .populate({
+        path: 'referred',
+        select: '_id name profileImage profession',
+        populate: { path: 'profession', select: '_id name' }
+      })
+      .populate({
+        path: 'referrer',
+        select: '_id name profileImage profession',
+        populate: { path: 'profession', select: '_id name' }
+      })
+      .populate('profession', '_id name')
       .lean()
 
-    // Serialize all MongoDB objects
-    const serializedReferrals = allReferrals.map(ref => ({
-      ...ref,
-      _id: (ref as any)?._id.toString(),
-      referrer: ref.referrer.toString(),
-      referred: ref.referred ? {
-        _id: ref.referred._id.toString(),
-        name: ref.referred.name
-      } : null
-    }))
-
-    const formatted: FormattedReferralData = {
-      activeCodes: [],
-      revokedCodes: [],
-      completedCodes: [],
-      pendingCodes: [],
-      currentCode: null,
-      stats: {
-        totalReferrals: 0,
-        successfulReferrals: 0,
-        pendingReferrals: 0,
-        revokedReferrals: 0
+    if (!sp) {
+      return {
+        success: false,
+        message: "Provider not found"
       }
     }
 
-    if (serializedReferrals?.length > 0) {
-      const pending = serializedReferrals.filter((r: any) => r.status === 'pending')
-      const revoked = serializedReferrals.filter((r: any) => r.status === 'revoked')
-      const completed = serializedReferrals.filter((r: any) => r.status === 'completed')
-
-      formatted.activeCodes = pending.map((r:any) => ({
-        code: r.referralCode,
-        link: `${process.env.NEXT_PUBLIC_APP_URL}/auth/service-provider/register?ref=${r.referralCode}`,
-        createdAt: new Date(r.createdAt).toISOString(),
-        progress: 0,
-        status: 'pending'
-      }))
-
-      formatted.revokedCodes = revoked.map((r: any) => ({
-        code: r.referralCode,
-        link: '',
-        createdAt: new Date(r.createdAt).toISOString(),
-        progress: 0,
-        status: 'revoked',
-        revokedAt: r.revokedAt ? new Date(r.revokedAt).toISOString() : undefined
-      }))
-
-      formatted.completedCodes = completed.map((r: any) => ({
-        code: r.referralCode,
-        link: '',
-        createdAt: new Date(r.createdAt).toISOString(),
-        progress: 100,
-        status: 'completed',
-        completedAt: r.completedAt ? new Date(r.completedAt).toISOString() : undefined,
-        referredUser: r.referred ? {
-          name: r.referred.name,
-          registeredAt: r.registeredAt ? new Date(r.registeredAt).toISOString() : new Date().toISOString()
-        } : undefined
-      }))
-
-      formatted.stats = {
-        totalReferrals: serializedReferrals.length,
-        successfulReferrals: completed.length,
-        pendingReferrals: pending.length,
-        revokedReferrals: revoked.length
-      }
+    const formatted: ReferralStats["data"] = {
+      me: {
+        _id: sp._id.toString(),
+        name: sp.name,
+        level: sp?.level,
+        profileImage: sp?.profileImage,
+        profession: sp.profession,
+      },
+      referrer: sp.referrer ? {
+        _id: sp.referrer._id.toString(),
+        name: sp.referrer.name,
+        profileImage: sp.referrer.profileImage,
+        profession: sp.referrer.profession,
+      } : undefined,
+      referred: sp.referred?.map(ref => ({
+        _id: ref._id.toString(),
+        name: ref.name,
+        profileImage: ref.profileImage,
+        profession: ref.profession,
+      })) || [],
+      currentCode: sp.referralCode ? {
+        code: sp.referralCode,
+        link: `${process.env.NEXT_PUBLIC_APP_URL}/auth/service-provider/register?ref=${sp.referralCode}`,
+      } : undefined,
     }
 
-    return { success: true, data: formatted }
+    return serialize({ success: true, data: formatted })
   } catch (error) {
     console.error("Error in getReferralStats:", error)
-    return { 
-      success: false, 
+    return {
+      success: false,
       message: "Failed to fetch referral stats",
-      data: {
-        activeCodes: [],
-        revokedCodes: [],
-        completedCodes: [],
-        pendingCodes: [],
-        currentCode: null,
-        stats: {
-          totalReferrals: 0,
-          successfulReferrals: 0,
-          pendingReferrals: 0,
-          revokedReferrals: 0
-        }
-      }
     }
-  }
-}
-
-export async function getReferralsByProvider(providerId: string) {
-  try {
-    await dbConnect()
-    const referrals = await Referral.find({ referrer: providerId })
-      .populate('referred', 'name')
-      .sort({ createdAt: -1 })
-      .lean()
-
-    // Transform the data to match ReferralData interface
-    return referrals.map(ref => ({
-      _id: (ref as any)?._id.toString(),
-      referralCode: ref.code,
-      referred: ref.referred ? {
-        _id: ref.referred._id.toString(),
-        name: ref.referred.name
-      } : undefined,
-      status: ref.status,
-      commission: ref.commission || 0,
-      createdAt: ref.createdAt
-    }))
-  } catch (error) {
-    console.error("Error fetching referrals:", error)
-    return []
   }
 }

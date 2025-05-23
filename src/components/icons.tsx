@@ -27,7 +27,9 @@ import {
     LucideProps,
     Link,
     Star,
-    MapPin
+    MapPin,
+    Clock,
+    CheckCircle,
   } from "lucide-react"
   
   export const Icons = {
@@ -58,4 +60,6 @@ import {
     Link: (props: LucideProps) => <Link {...props} />,
     Star: (props: LucideProps) => <Star {...props} />,
     MapPin: (props: LucideProps) => <MapPin {...props} />,
+    Clock: (props: LucideProps) => <Clock {...props} />,
+    CheckCircle: (props: LucideProps) => <CheckCircle {...props} />,
   }

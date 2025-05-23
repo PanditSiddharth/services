@@ -55,9 +55,9 @@ export const createOrUpdateUser = async (userData: UserData) => {
     rest.updatedAt = new Date(); // optional
 
     if (_id && mongoose.Types.ObjectId.isValid(_id)) {
-      return await Model.findByIdAndUpdate(_id, rest, { new: true });
+      return JSON.parse(JSON.stringify(await Model.findByIdAndUpdate(_id, rest, { new: true })));
     } else {
-      return await Model.create(rest);
+      return JSON.parse(JSON.stringify(await Model.create(rest)));
     }
   } catch (error) {
     console.error("Error creating/updating user:", error);

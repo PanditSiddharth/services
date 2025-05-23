@@ -1,27 +1,30 @@
-export interface ReferralCode {
-  code: string;
-  link: string;
-  createdAt: string;
-  progress: number;
-  status: 'pending' | 'registered' | 'completed' | 'revoked';
-}
-
-export interface ReferralData {
-  pendingCodes: ReferralCode[];
-  activeCodes: ReferralCode[];
-  completedCodes: ReferralCode[];
-  revokedCodes: ReferralCode[];
-  currentCode: {
-    code: string;
-    link: string;
-    createdAt: string;
-  } | null;
-  stats: {
-    totalReferrals: number;
-    successfulReferrals: number;
-    pendingReferrals: number;
-    revokedReferrals: number;
+export interface BasicUser {
+  _id: string;
+  name: string;
+  profileImage?: string;
+  profession: string | {
+    _id: string;
+    name: string;
   };
 }
 
-export type FormattedReferralData = ReferralData;
+export interface ReferralStats {
+  me?: BasicUser & {
+    referralCode?: {
+      code: string;
+      link: string;
+    }
+  };
+  referrer?: BasicUser;
+  referred?: BasicUser[];
+  currentCode?: {
+    code: string;
+    link: string;
+  };
+}
+
+export interface ReferralResponse {
+  success: boolean;
+  message?: string;
+  data?: ReferralStats;
+}

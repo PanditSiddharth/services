@@ -20,6 +20,7 @@ import { getServices } from "@/app/actions/services"
 import { signIn } from "next-auth/react"
 import { uploadImage } from "@/app/actions/cloudinary"
 import { validateReferralCode, completeReferral } from "@/app/actions/referral"
+import { createOrUpdateUser } from "@/app/actions/user"
 
 // Updated schema to match MongoDB model
 const formSchema = z.object({
@@ -63,17 +64,13 @@ const formSchema = z.object({
 });
 
 // Add type for referral validation result
-type ReferralValidationResult = {
-  success: boolean;
-  message?: string;
-  referral?: {
-    _id: string;
-    referralCode: string;
-    referrer: {
-      _id: string;
-      name: string;
-    }
-  }
+type ReferralValidationResult =  {
+    success: boolean;
+    message?: string;
+    data?: {
+        referrerId: string;
+        referrerName: string;
+    };
 }
 
 export default function ProviderRegisterPage() {
@@ -122,7 +119,8 @@ export default function ProviderRegisterPage() {
     setIsSubmitting(true)
     try {
       const image = "https://res.cloudinary.com/panditsiddharth/image/upload/v1746615171/services-app/d3zbbp2pwlvuzl8hsadz.jpg"
-      
+      const referralCode = values?.referralCode
+      delete values?.referralCode
       // Remove the referral code check to allow submission without referral
       const formattedData = {
         ...values,
@@ -130,6 +128,9 @@ export default function ProviderRegisterPage() {
         profileImage: image || "/profile-image.jpg",
       }
 
+      const user = await createOrUpdateUser(JSON.parse(JSON.stringify(formattedData)))
+      if(!user)
+        return toast.error("User creation failed. Please try again or contact us!.")
       const result = await signIn("credentials", {
         data: JSON.stringify(formattedData),
         redirect: false,
@@ -139,8 +140,9 @@ export default function ProviderRegisterPage() {
         toast.error("Registration failed. Please try again.");
       } else {
         // Only complete referral if code exists and is validated
-        if (values.referralCode && referralValidation?.success) {
-          await completeReferral(values.referralCode, (result as any)?.user?._id);
+        if (referralCode && referralValidation?.success) {
+          console.log("Completing referral for code:", referralCode, user?._id);
+          await completeReferral(referralCode, user?._id);
         }
         toast.success("Registration successful!");
         router.push("/service-provider");
@@ -229,7 +231,7 @@ export default function ProviderRegisterPage() {
       setReferralValidation(result);
       
       if (result.success) {
-        toast.success(`Valid referral code from ${result.referral?.referrer.name}`);
+        toast.success(`Valid referral code from ${result.data?.referrerName}`);
       } else {
         toast.error(result.message);
         form.setValue("referralCode", "");
@@ -603,7 +605,7 @@ export default function ProviderRegisterPage() {
                         </div>
                         {referralValidation?.success && (
                           <p className="text-sm text-green-600">
-                            Referral code from: {referralValidation.referral?.referrer.name}
+                            Referral code from: {referralValidation?.data?.referrerName}
                           </p>
                         )}
                       </div>

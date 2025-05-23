@@ -5,52 +5,89 @@ import { useSession } from "next-auth/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { toast } from "react-toastify"
 import { Icons } from "@/components/icons"
-import { generateReferralToken, getReferralStats, revokeReferralCode } from "@/app/actions/referral"
-import type { ReferralData } from "@/types/referral"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { generateReferralToken, getReferralStats, revokeReferral } from "@/app/actions/referral"
+import { ChevronLeft, Users, User, ChevronRight } from "lucide-react"
+
+interface ReferralNode {
+  _id: string
+  name: string
+  profileImage?: string
+  profession: { _id: string; name: string }
+  level?: number
+  referralCode?: string
+  referred?: ReferralNode[]
+  referrer?: ReferralNode
+}
 
 export default function ReferralPage() {
   const { data: session } = useSession()
-  const [referralData, setReferralData] = useState<ReferralData>({
-    pendingCodes: [],
-    activeCodes: [],
-    completedCodes: [],
-    revokedCodes: [],
-    stats: {
-      totalReferrals: 0,
-      successfulReferrals: 0,
-      pendingReferrals: 0,
-      revokedReferrals: 0
-    },
-    currentCode: null // Add default value for currentCode
-  })
+  const [currentView, setCurrentView] = useState<ReferralNode | null>(null)
+  const [referralHistory, setReferralHistory] = useState<ReferralNode[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [stats, setStats] = useState<any>(null)
   const [isGenerating, setIsGenerating] = useState(false)
-  const [isCopied, setIsCopied] = useState(false)
-  const [copyingItem, setCopyingItem] = useState<"code" | "link" | null>(null)
   const [customCode, setCustomCode] = useState("")
   const [showRevokeDialog, setShowRevokeDialog] = useState(false)
   const [revoking, setRevoking] = useState(false)
-  const [selectedCode, setSelectedCode] = useState<any>(null)
+
+  const loadReferralData = async (userId: string) => {
+    setIsLoading(true)
+    try {
+      const result = await getReferralStats(userId)
+      if (result.success && result.data) {
+        const newNode: ReferralNode = {
+          _id: result.data.me!._id,
+          name: result.data.me!.name,
+          profileImage: result.data.me!.profileImage,
+          profession: result.data.me!.profession as { _id: string; name: string },
+          level: Number(result.data.me!.level),
+          referralCode: result.data?.currentCode?.code,
+          referred: result.data?.referred?.map(ref => ({
+            _id: ref._id,
+            name: ref.name,
+            profileImage: ref.profileImage,
+            profession: ref?.profession as unknown as { _id: string; name: string },
+          })),
+          referrer: result.data.referrer ? {
+            _id: result.data.referrer._id,
+            name: result.data.referrer.name,
+            profileImage: result.data.referrer.profileImage,
+            profession: result.data.referrer.profession as unknown as { _id: string; name: string },
+          } : undefined
+        }
+        setCurrentView(newNode)
+        setStats(result.data)
+      }
+    } catch (error) {
+      toast.error("Failed to load referral data")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleViewMember = async (member: ReferralNode) => {
+    setReferralHistory(prev => [...prev, currentView!])
+    await loadReferralData(member._id)
+  }
+
+  const handleBack = () => {
+    const previous = referralHistory.pop()
+    if (previous) {
+      setCurrentView(previous)
+      setReferralHistory([...referralHistory])
+    }
+  }
 
   const loadReferralStats = async () => {
     if (!session?.user) return
     
     try {
       const result = await getReferralStats((session.user as any)._id)
-      
       if (result.success && result.data) {
-        // Transform the data to match ReferralData structure
-        const transformedData: ReferralData = {
-          pendingCodes: result.data.activeCodes,
-          activeCodes: result.data.activeCodes,
-          completedCodes: result.data.completedCodes,
-          revokedCodes: result.data.revokedCodes,
-          currentCode: result.data.activeCodes[0] || null,
-          stats: result.data.stats
-        }
-        setReferralData(transformedData)
+        setStats(result.data)
       }
     } catch (error) {
       console.error("Error loading referral stats:", error)
@@ -73,13 +110,9 @@ export default function ReferralPage() {
         customCodeValue || undefined
       )
       if (result.success && result.data) {
-        setReferralData(prev => ({
-          ...prev,
-          currentCode: result.data.currentCode
-        }))
+        loadReferralStats() // Reload stats after generating new code
         setCustomCode("")
         toast.success("Referral code generated successfully")
-        loadReferralStats() // Reload all stats
       }
     } catch (error) {
       console.error("Error:", error)
@@ -89,31 +122,16 @@ export default function ReferralPage() {
     }
   }
 
-  const handleCopyToClipboard = async (type: "code" | "link", text: string) => {
-    try {
-      await navigator.clipboard.writeText(text)
-      setCopyingItem(type)
-      toast.success(`${type === "code" ? "Code" : "Link"} copied to clipboard`)
-      setTimeout(() => setCopyingItem(null), 2000)
-    } catch (error) {
-      toast.error("Failed to copy to clipboard")
-    }
-  }
-
   const handleRevoke = async () => {
-    if (!session?.user || !referralData.currentCode) return
+    if (!session?.user || !stats?.currentCode) return
     
     setRevoking(true)
     try {
-      const result = await revokeReferralCode(
-        (session.user as any)._id,
-        referralData.currentCode.code
-      )
+      const result = await revokeReferral(stats?.currentCode.code)
       
       if (result.success) {
         toast.success("Referral code revoked successfully")
         loadReferralStats() // Reload stats
-        setReferralData(prev => ({ ...prev, currentCode: null }))
       } else {
         throw new Error(result.message)
       }
@@ -126,107 +144,161 @@ export default function ReferralPage() {
   }
 
   useEffect(() => {
-    loadReferralStats()
+    if (session?.user) {
+      loadReferralData((session.user as any)._id)
+    }
   }, [session])
 
-  interface ReferralTableProps {
-    title: string;
-    items: any[];
-    showProgress?: boolean;
-    showRevoked?: boolean;
-  }
-
-  const ReferralTable = ({ title, items, showProgress, showRevoked }: ReferralTableProps) => {
-    // Filter out revoked codes with no referrals
-    const filteredItems = showRevoked 
-      ? items.filter(item => item.hadReferrals)
-      : items;
-
-    return (
-      <div className="border-t pt-6">
-        <h3 className="font-medium mb-4">{title}</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="text-left border-b">
-                <th className="pb-2">Code</th>
-                {showProgress && <th className="pb-2">Progress</th>}
-                <th className="pb-2">Created</th>
-                {showRevoked ? (
-                  <>
-                    <th className="pb-2">Referred Users</th>
-                    <th className="pb-2">Revoked Date</th>
-                  </>
-                ) : (
-                  <th className="pb-2">Status</th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {filteredItems.length > 0 ? filteredItems.map((item) => (
-                <tr key={item.code} className="text-sm">
-                  <td className="py-2 font-mono">{item.code}</td>
-                  {showProgress && (
-                    <td className="py-2">
-                      <div className="flex items-center gap-2">
-                        <div className="h-2 w-24 bg-gray-200 rounded-full">
-                          <div 
-                            className="h-full bg-blue-500 rounded-full"
-                            style={{ width: `${item.progress}%` }}
-                          />
-                        </div>
-                        <span>{item.progress}%</span>
-                      </div>
-                    </td>
-                  )}
-                  <td className="py-2">{new Date(item.createdAt).toLocaleDateString()}</td>
-                  {showRevoked ? (
-                    <>
-                      <td className="py-2">{item.referredCount}</td>
-                      <td className="py-2">{new Date(item.revokedAt).toLocaleDateString()}</td>
-                    </>
-                  ) : (
-                    <td className="py-2">
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        item.status === 'completed' ? 'bg-green-100 text-green-800' :
-                        item.status === 'revoked' ? 'bg-red-100 text-red-800' :
-                        'bg-blue-100 text-blue-800'
-                      }`}>
-                        {item.status}
-                      </span>
-                    </td>
-                  )}
-                </tr>
-              )) : (
-                <tr>
-                  <td colSpan={showRevoked ? 4 : 3} className="text-center py-4 text-gray-500">
-                    No {title.toLowerCase()} found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="container max-w-4xl mx-auto py-10">
+    <div className="container max-w-4xl mx-auto py-8">
       <Card>
         <CardHeader>
-          <CardTitle>Referral Program</CardTitle>
-          <CardDescription>Generate and share your referral token to earn rewards</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Referral Network</CardTitle>
+              <CardDescription>View your referral tree and network</CardDescription>
+            </div>
+            {referralHistory.length > 0 && (
+              <Button variant="ghost" onClick={handleBack}>
+                <ChevronLeft className="mr-2 h-4 w-4" />
+                Back
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Active Codes Section */}
-          <div className="bg-blue-50 p-4 rounded-lg mb-4">
+          {/* Current View Member Card */}
+          {currentView && (
+            <div className="bg-blue-50 p-6 rounded-lg">
+              <div className="flex items-center gap-4">
+                <div className="h-16 w-16 rounded-full overflow-hidden bg-white">
+                  <img
+                    src={currentView.profileImage || "/placeholder.png"}
+                    alt={currentView.name}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <div>
+                  <h3 className="text-xl font-medium">{currentView.name}</h3>
+                  <p className="text-sm text-gray-600">{currentView.profession.name}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                      Level {currentView.level || 0}
+                    </span>
+                    {currentView.referralCode && (
+                      <span className="font-mono text-sm">
+                        Code: {currentView.referralCode}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Referrer Section */}
+          {currentView?.referrer && (
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                <User className="h-4 w-4" />
+                Referred By
+              </h4>
+              <div 
+                className="p-4 bg-gray-50 rounded-lg flex items-center justify-between cursor-pointer hover:bg-gray-100"
+                onClick={() => handleViewMember(currentView.referrer!)}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full overflow-hidden">
+                    <img
+                      src={currentView.referrer.profileImage || "/placeholder.png"}
+                      alt={currentView.referrer.name}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <div>
+                    <h5 className="font-medium">{currentView.referrer.name}</h5>
+                    <p className="text-sm text-gray-500">{currentView.referrer.profession.name}</p>
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-gray-400" />
+              </div>
+            </div>
+          )}
+
+          {/* Referred Members Section */}
+          {currentView?.referred && currentView?.referred.length > 0 && (
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Referred Members ({currentView?.referred.length})
+              </h4>
+              <div className="space-y-2">
+                {currentView?.referred.map((member) => (
+                  <div 
+                    key={member._id}
+                    className="p-4 bg-gray-50 rounded-lg flex items-center justify-between cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleViewMember(member)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full overflow-hidden">
+                        <img
+                          src={member.profileImage || "/placeholder.png"}
+                          alt={member.name}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                      <div>
+                        <h5 className="font-medium">{member.name}</h5>
+                        <p className="text-sm text-gray-500">{member.profession.name}</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-gray-400" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Stats Section */}
+          <div className="border-t pt-6">
+            <h3 className="font-medium mb-4">Your Stats</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader className="py-4">
+                  <CardTitle className="text-sm font-medium text-gray-500">
+                    Total Referrals
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {stats?.referred?.length || 0}
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="py-4">
+                  <CardTitle className="text-sm font-medium text-gray-500">
+                    Remaining Slots
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {Math.max(0, 3 - (stats?.referred?.length || 0))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* Current Code Section */}
+          <div className="bg-blue-50 p-4 rounded-lg">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="font-medium text-blue-800">Active Referral Codes</h3>
+              <h3 className="font-medium text-blue-800">Your Referral Code</h3>
               <Button
                 size="sm"
                 onClick={() => handleGenerateToken(customCode)}
-                disabled={isGenerating || referralData.activeCodes.length >= 5}
+                disabled={isGenerating}
               >
                 {isGenerating ? (
                   <>
@@ -234,249 +306,58 @@ export default function ReferralPage() {
                     Generating...
                   </>
                 ) : (
-                  <>
-                    <Icons.Plus className="mr-2 h-4 w-4" />
-                    New Code
-                  </>
+                  "Generate Code"
                 )}
               </Button>
             </div>
 
-            {referralData.activeCodes.length === 0 ? (
-              <div className="text-center py-4 text-gray-500">
-                No active referral codes. Generate one to start referring!
-              </div>
-            ) : (
+            {stats?.currentCode ? (
               <div className="space-y-4">
-                {referralData.activeCodes.map((code) => (
-                  <div key={code.code} className="bg-white p-4 rounded-lg shadow-sm">
-                    <div className="flex justify-between items-start mb-2">
-                      <code className="font-mono text-lg">{code.code}</code>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedCode(code);
-                          setShowRevokeDialog(true);
-                        }}
-                      >
-                        <Icons.X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                      <Icons.Calendar className="h-4 w-4" />
-                      {new Date(code.createdAt).toLocaleDateString()}
-                    </div>
-                    <div className="mt-2 flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleCopyToClipboard("code", code.code)}
-                      >
-                        Copy Code
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleCopyToClipboard("link", code.link)}
-                      >
-                        Copy Link
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Custom Code Input */}
-            {referralData.activeCodes.length < 5 && (
-              <div className="mt-4">
-                <Input
-                  placeholder="Enter custom code (optional)"
-                  value={customCode}
-                  onChange={handleCustomCodeChange}
-                  className="font-mono uppercase max-w-xs"
-                  maxLength={6}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Active Referral Section */}
-          <div className="bg-blue-50 p-4 rounded-lg mb-4">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="font-medium text-blue-800">Active Referral Code</h3>
-              <div className="flex gap-2">
-                {referralData.currentCode ? (
-                  <>
+                <div className="bg-white p-4 rounded-lg shadow-sm">
+                  <div className="flex justify-between items-start">
+                    <code className="font-mono text-lg">{stats?.currentCode.code}</code>
                     <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleGenerateToken()}
-                      disabled={isGenerating}
-                    >
-                      New Code
-                    </Button>
-                    <Button
-                      variant="destructive"
+                      variant="ghost"
                       size="sm"
                       onClick={() => setShowRevokeDialog(true)}
-                      disabled={revoking}
                     >
-                      {revoking ? (
-                        <Icons.Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        "Revoke"
-                      )}
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    size="sm"
-                    onClick={() => handleGenerateToken(customCode)}
-                    disabled={isGenerating}
-                  >
-                    {isGenerating ? "Generating..." : "Generate Code"}
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            {referralData.currentCode ? (
-              <div className="space-y-2">
-                <div className="flex flex-col gap-4">
-                  <div className="flex items-center gap-2">
-                    <Input 
-                      value={referralData.currentCode.code} 
-                      readOnly 
-                      className="font-mono"
-                    />
-                    <Button
-                      variant="outline"
-                      onClick={() => handleCopyToClipboard("code", referralData.currentCode?.code || "")}
-                      className="flex items-center gap-2"
-                    >
-                      {copyingItem === "code" ? (
-                        <>
-                          <Icons.Check className="h-4 w-4" />
-                          Copied
-                        </>
-                      ) : (
-                        <>
-                          <Icons.Copy className="h-4 w-4" />
-                          Copy Code
-                        </>
-                      )}
+                      <Icons.X className="h-4 w-4" />
                     </Button>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Input 
-                      value={referralData.currentCode.link} 
-                      readOnly 
-                      className="font-mono text-sm"
-                    />
+                  <div className="mt-2 flex gap-2">
                     <Button
                       variant="outline"
-                      onClick={() => handleCopyToClipboard("link", referralData.currentCode?.link || "")}
-                      className="flex items-center gap-2"
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText(stats?.currentCode!.code)
+                        toast.success("Code copied!")
+                      }}
                     >
-                      {copyingItem === "link" ? (
-                        <>
-                          <Icons.Check className="h-4 w-4" />
-                          Copied
-                        </>
-                      ) : (
-                        <>
-                          <Icons.Link className="h-4 w-4" />
-                          Copy Link
-                        </>
-                      )}
+                      Copy Code
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText(stats?.currentCode!.link)
+                        toast.success("Link copied!")
+                      }}
+                    >
+                      Copy Link
                     </Button>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="flex gap-2 items-center">
-                <Input
-                  placeholder="Custom code (optional)"
-                  value={customCode}
-                  onChange={handleCustomCodeChange}
-                  className="font-mono uppercase max-w-xs"
-                  maxLength={6}
-                />
+              <div className="text-center py-4 text-gray-500">
+                No active referral code. Generate one to start referring!
               </div>
             )}
           </div>
-
-          {/* Active Referrals Section */}
-          <ReferralTable 
-            title="Active Referrals" 
-            items={referralData.pendingCodes} 
-            showProgress={true}
-          />
-          
-          {/* Revoked Referrals Section */}
-          <ReferralTable 
-            title="Revoked Referrals" 
-            items={referralData.revokedCodes} 
-            showRevoked={true}
-          />
-          
-          {/* Completed Referrals Section */}
-          <ReferralTable 
-            title="Completed Referrals" 
-            items={referralData.completedCodes} 
-            showProgress={true}
-          />
-
-          {/* Stats Section */}
-          <div className="border-t pt-6">
-            <h3 className="font-medium mb-4">Referral Statistics</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card>
-                <CardHeader className="py-4">
-                  <CardTitle className="text-sm font-medium text-gray-500">
-                    Active
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {(referralData.activeCodes || []).length}
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader className="py-4">
-                  <CardTitle className="text-sm font-medium text-gray-500">
-                    Completed
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {(referralData.completedCodes || []).length}
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader className="py-4">
-                  <CardTitle className="text-sm font-medium text-gray-500">
-                    Total
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {referralData.stats.totalReferrals || 0}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
         </CardContent>
       </Card>
-      
-      {/* Add Revoke Dialog */}
+
+      {/* Revoke Dialog */}
       <Dialog open={showRevokeDialog} onOpenChange={setShowRevokeDialog}>
         <DialogContent>
           <DialogHeader>

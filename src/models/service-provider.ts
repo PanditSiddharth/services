@@ -1,49 +1,49 @@
 import mongoose from "mongoose"
 
 export interface ServiceProviderType {
-  _id?: string;
-  name: string;
-  email: string;
-  password: string;
-  phone: string;
-  profileImage: string;
-  profession: string | any;
-  experience: number;
-  address: {
-    street?: string;
-    city: string;
-    state: string;
-    pincode: string;
-    landmark?: string;
-  };
-  coordinates?: [number, number];
-  availability: {
-    isAvailable: boolean;
-    workingDays: string[];
-    workingHours: {
-      start: string;
-      end: string;
+    _id?: string;
+    name: string;
+    email: string;
+    password: string;
+    phone: string;
+    profileImage: string;
+    profession: string | any;
+    experience: number;
+    address: {
+        street?: string;
+        city: string;
+        state: string;
+        pincode: string;
+        landmark?: string;
     };
-  };
-  professionalCertificates?: string[];
-  isVerified: boolean;
-  isActive: boolean;
-  rating: number;
-  totalReviews: number;
-  totalBookings: number;
-  completedBookings: number;
-  bookings?: string[] | any[];
-  reviews?: string[] | any[];
-  bankDetails: {
-    accountHolderName?: string;
-    accountNumber?: string;
-    ifscCode?: string;
-    bankName?: string;
-    branch?: string;
-  };
-  role?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
+    coordinates?: [number, number];
+    availability: {
+        isAvailable: boolean;
+        workingDays: string[];
+        workingHours: {
+            start: string;
+            end: string;
+        };
+    };
+    professionalCertificates?: string[];
+    isVerified: boolean;
+    isActive: boolean;
+    rating: number;
+    totalReviews: number;
+    totalBookings: number;
+    completedBookings: number;
+    bookings?: string[] | any[];
+    reviews?: string[] | any[];
+    bankDetails: {
+        accountHolderName?: string;
+        accountNumber?: string;
+        ifscCode?: string;
+        bankName?: string;
+        branch?: string;
+    };
+    role?: string;
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
 const serviceProviderSchema = new mongoose.Schema(
@@ -199,6 +199,29 @@ const serviceProviderSchema = new mongoose.Schema(
         role: {
             type: String,
             default: "serviceProvider"
+        },
+        referralCode: {
+            type: String,
+            maxlength: 6,
+            validate: {
+                validator: function(v: string) {
+                    return !v || /^[A-Z0-9]{6}$/.test(v)
+                },
+                message: 'Referral code must be 6 alphanumeric characters'
+            }
+        },
+        referrer: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'ServiceProvider',
+            default: null
+        },
+        referred: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'ServiceProvider'
+        }],
+        level: {
+            type: Number,
+            default: 0
         }
     },
     {
@@ -206,6 +229,13 @@ const serviceProviderSchema = new mongoose.Schema(
     },
 )
 
+serviceProviderSchema.index(
+  { referralCode: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { referralCode: { $exists: true, $ne: null } }
+  }
+)
 // Method to check if provider is available in a specific location
 serviceProviderSchema.methods.isAvailableInLocation = function (userLat: number, userLng: number) {
     if (!this.coordinates || this.coordinates.length !== 2) return false;
@@ -228,16 +258,16 @@ serviceProviderSchema.methods.isAvailableInLocation = function (userLat: number,
     const distance = earthRadiusKm * c;
 
     // Assuming a threshold of 50 km for availability
-    return distance <= 25;
+    return distance <= 10;
 };
 
-serviceProviderSchema.virtual('completionRate').get(function() {
-    return this.totalBookings > 0 
-        ? (this.completedBookings / this.totalBookings * 100).toFixed(1) 
+serviceProviderSchema.virtual('completionRate').get(function () {
+    return this.totalBookings > 0
+        ? (this.completedBookings / this.totalBookings * 100).toFixed(1)
         : 0;
 });
 
-serviceProviderSchema.methods.updateStats = async function(bookingStatus) {
+serviceProviderSchema.methods.updateStats = async function (bookingStatus) {
     if (bookingStatus === 'completed') {
         this.completedBookings += 1;
     }
@@ -245,10 +275,10 @@ serviceProviderSchema.methods.updateStats = async function(bookingStatus) {
     await this.save();
 };
 
-serviceProviderSchema.methods.updateRating = async function(rating) {
+serviceProviderSchema.methods.updateRating = async function (rating) {
     const newTotalReviews = this.totalReviews + 1;
     const newRating = ((this.rating * this.totalReviews) + rating) / newTotalReviews;
-    
+
     this.rating = Number(newRating.toFixed(1));
     this.totalReviews = newTotalReviews;
     await this.save();

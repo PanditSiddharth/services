@@ -5,7 +5,7 @@ import { useEffect, useState } from "react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { DataTable } from "@/components/data-table"
 import { Button } from "@/components/ui/button"
-import { generateReferralToken, getReferralsByProvider } from "@/app/actions/referral"
+import { generateReferralToken } from "@/app/actions/referral"
 import { useSession } from "next-auth/react"
 import { toast } from "react-toastify"
 
@@ -26,18 +26,6 @@ export default function ReferralsPage() {
   const [referrals, setReferrals] = useState<ReferralData[]>([])
   const [currentCode, setCurrentCode] = useState("")
 
-  useEffect(() => {
-    // Safely check for user ID
-    const userId = (session?.user as any)?._id;
-    if (userId) {
-      loadReferrals(userId)
-    }
-  }, [session])
-
-  const loadReferrals = async (userId: string) => {
-    const data = await getReferralsByProvider(userId)
-    setReferrals(data as ReferralData[])
-  }
 
   const handleGenerateCode = async () => {
     const userId = (session?.user as any)?._id;
@@ -48,7 +36,7 @@ export default function ReferralsPage() {
     
     const result = await generateReferralToken(userId)
     if (result.success) {
-      setCurrentCode(result.code)
+      setCurrentCode(result?.data?.referralCode || "")
       toast.success("New referral code generated!")
     } else {
       toast.error(result.message)
