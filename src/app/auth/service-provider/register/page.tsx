@@ -21,7 +21,8 @@ import { signIn } from "next-auth/react"
 import { uploadImage } from "@/app/actions/cloudinary"
 import { validateReferralCode, completeReferral } from "@/app/actions/referral"
 import { createOrUpdateUser } from "@/app/actions/user"
-import { getPincodeDetails, getCitiesByState, getStates } from "@/lib/postal-api"
+import { getPincodeDetails, getCitiesByState, getStates, getBanks, getBankByIfsc } from "@/lib/postal-api"
+import { debounce } from "lodash"
 
 // Updated schema to match MongoDB model
 const formSchema = z.object({
@@ -83,6 +84,10 @@ export default function ProviderRegisterPage() {
   const [states, setStates] = useState<string[]>([])
   const [cities, setCities] = useState<string[]>([])
   const [isLoadingCities, setIsLoadingCities] = useState(false)
+  const [bankSearchResults, setBankSearchResults] = useState<{ code: string, name: string }[]>([])
+  const [isLoadingBank, setIsLoadingBank] = useState(false)
+  const [bankSearchTerm, setBankSearchTerm] = useState('')
+  const [selectedBankName, setSelectedBankName] = useState('')
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -136,23 +141,26 @@ export default function ProviderRegisterPage() {
       if (!user)
         return toast.error("User creation failed. Please try again or contact us!.")
 
+      if (user.success === false)
+        return toast.error(user.message || "User creation failed. Please try again or contact us!.")
+
       // Only complete referral if code exists and is validated
       if (referralCode && referralValidation?.success) {
         console.log("Completing referral for code:", referralCode, user?._id);
         await completeReferral(referralCode, user?._id);
-
-        const result = await signIn("credentials", {
+      }
+      
+      const result = await signIn("credentials", {
           data: JSON.stringify(formattedData),
           redirect: false,
         });
         toast.success("Registration successful!");
         router.push("/service-provider");
-      }
     } catch (error) {
       console.error("Registration error:", error)
       toast.error("An error occurred. Please try again.")
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
   }
 
@@ -297,6 +305,58 @@ export default function ProviderRegisterPage() {
       } catch (error) {
         console.error('Error fetching pincode details:', error)
         toast.error('Invalid pincode')
+      }
+    }
+  }
+
+  const [debouncedBankSearch] = useState(() => {
+    const debounced = (searchTerm: string) => {
+      setIsLoadingBank(true)
+      getBanks(searchTerm)
+        .then(banks => {
+          setBankSearchResults(banks)
+        })
+        .catch(error => {
+          console.error('Error searching banks:', error)
+          toast.error('Failed to search banks')
+        })
+        .finally(() => setIsLoadingBank(false))
+    }
+    return debounce(debounced, 300)
+  })
+
+  const handleBankSearch = (searchTerm: string) => {
+    setBankSearchTerm(searchTerm)
+    debouncedBankSearch(searchTerm)
+  }
+
+  const handleBankSelect = (bank: { code: string, name: string }) => {
+    form.setValue('bankDetails.bankName', bank.code)
+    setSelectedBankName(bank.name)
+    setBankSearchTerm(bank.name)
+    setBankSearchResults([])
+  }
+
+  const handleIfscValidation = async (ifsc: string) => {
+    if (ifsc.length === 11) {
+      try {
+        const bankDetails = await getBankByIfsc(ifsc)
+        if (bankDetails) {
+          form.setValue('bankDetails.bankName', bankDetails.bankCode)
+          form.setValue('bankDetails.branch', bankDetails.branch)
+          setBankSearchTerm(bankDetails.bank)
+          setSelectedBankName(bankDetails.bank)
+          toast.success('Bank details found!')
+        } else {
+          form.setValue('bankDetails.bankName', '')
+          form.setValue('bankDetails.branch', '')
+          setBankSearchTerm('')
+          setSelectedBankName('')
+          toast.error('Invalid IFSC code')
+        }
+      } catch (error) {
+        console.error('Error validating IFSC:', error)
+        toast.error('Failed to validate IFSC code')
       }
     }
   }
@@ -612,42 +672,101 @@ export default function ProviderRegisterPage() {
 
                     <div className="space-y-2">
                       <Label htmlFor="bankDetails.accountHolderName">Account Holder Name</Label>
-                      <Input id="bankDetails.accountHolderName" {...form.register("bankDetails.accountHolderName")} placeholder="John Doe" />
+                      <Input
+                        id="bankDetails.accountHolderName"
+                        {...form.register("bankDetails.accountHolderName")}
+                        placeholder="John Doe"
+                      />
                       {form.formState.errors["bankDetails.accountHolderName"] && (
-                        <p className="text-sm text-red-500">{form.formState.errors["bankDetails.accountHolderName"].message}</p>
+                        <p className="text-sm text-red-500">
+                          {form.formState.errors["bankDetails.accountHolderName"].message}
+                        </p>
                       )}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <Label htmlFor="bankDetails.accountNumber">Account Number</Label>
-                        <Input id="bankDetails.accountNumber" {...form.register("bankDetails.accountNumber")} placeholder="XXXXXXXXXXXX" />
+                        <Input
+                          id="bankDetails.accountNumber"
+                          {...form.register("bankDetails.accountNumber")}
+                          placeholder="XXXXXXXXXXXX"
+                        />
                         {form.formState.errors["bankDetails.accountNumber"] && (
-                          <p className="text-sm text-red-500">{form.formState.errors["bankDetails.accountNumber"].message}</p>
+                          <p className="text-sm text-red-500">
+                            {form.formState.errors["bankDetails.accountNumber"].message}
+                          </p>
                         )}
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="bankDetails.ifscCode">IFSC Code</Label>
-                        <Input id="bankDetails.ifscCode" {...form.register("bankDetails.ifscCode")} placeholder="SBIN0000123" />
+                        <Input
+                          id="bankDetails.ifscCode"
+                          {...form.register("bankDetails.ifscCode")}
+                          placeholder="SBIN0000123"
+                          onChange={(e) => handleIfscValidation(e.target.value.toUpperCase())}
+                          className="uppercase"
+                        />
                         {form.formState.errors["bankDetails.ifscCode"] && (
-                          <p className="text-sm text-red-500">{form.formState.errors["bankDetails.ifscCode"].message}</p>
+                          <p className="text-sm text-red-500">
+                            {form.formState.errors["bankDetails.ifscCode"].message}
+                          </p>
                         )}
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <Label htmlFor="bankDetails.bankName">Bank Name</Label>
-                        <Input id="bankDetails.bankName" {...form.register("bankDetails.bankName")} placeholder="State Bank of India" />
+                        <Label>Bank Name</Label>
+                        <div className="relative">
+                          <Input
+                            type="text"
+                            placeholder="Type to search bank"
+                            value={bankSearchTerm}
+                            onChange={(e) => handleBankSearch(e.target.value)}
+                            onFocus={() => {
+                              if (!bankSearchTerm) {
+                                handleBankSearch('a') // Load initial list on focus
+                              }
+                            }}
+                          />
+                          {isLoadingBank && (
+                            <div className="absolute right-3 top-3">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            </div>
+                          )}
+                          {bankSearchResults.length > 0 && (
+                            <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                              {bankSearchResults.map((bank) => (
+                                <div
+                                  key={bank.code}
+                                  className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                                  onClick={() => handleBankSelect(bank)}
+                                >
+                                  {bank.name}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                         {form.formState.errors["bankDetails.bankName"] && (
-                          <p className="text-sm text-red-500">{form.formState.errors["bankDetails.bankName"].message}</p>
+                          <p className="text-sm text-red-500">
+                            {form.formState.errors["bankDetails.bankName"].message}
+                          </p>
                         )}
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="bankDetails.branch">Branch</Label>
-                        <Input id="bankDetails.branch" {...form.register("bankDetails.branch")} placeholder="Mumbai Main Branch" />
+                        <Input
+                          id="bankDetails.branch"
+                          {...form.register("bankDetails.branch")}
+                          placeholder="Mumbai Main Branch"
+                          readOnly={form.watch("bankDetails.ifscCode")?.length === 11}
+                        />
                         {form.formState.errors["bankDetails.branch"] && (
-                          <p className="text-sm text-red-500">{form.formState.errors["bankDetails.branch"].message}</p>
+                          <p className="text-sm text-red-500">
+                            {form.formState.errors["bankDetails.branch"].message}
+                          </p>
                         )}
                       </div>
                     </div>

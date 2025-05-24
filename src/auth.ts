@@ -68,28 +68,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async signIn({ user }: any) {
       try {
-        if (!user?.email) return false;
-        await dbConnect();
-
-        // Remove non-essential fields before checking/creating user
-        const userToCreate = { ...user };
-        delete userToCreate.csrfToken;
-        delete userToCreate.callbackUrl;
-             console.log("existingUser", user);
-
-        const existingUser = await getUser({
-          email: user.email,
-          role: user.role,
-          populate: false
-        });
-             console.log("existingUser", existingUser);
-
-        if (!existingUser && userToCreate.name) {
-          await createOrUpdateUser(userToCreate);
-          return true;
-        }
-
-        return !!existingUser;
+        return true
       } catch (error) {
         console.error("SignIn error:", error);
         return false;

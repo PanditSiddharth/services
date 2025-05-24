@@ -59,9 +59,12 @@ export const createOrUpdateUser = async (userData: UserData) => {
     } else {
       return JSON.parse(JSON.stringify(await Model.create(rest)));
     }
-  } catch (error) {
+  } catch (error:any) {
     console.error("Error creating/updating user:", error);
-    return null;
+    return {
+      success: false,
+      message: error?.message || "Failed to create or update user",
+    };
   }
 };
 

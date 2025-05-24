@@ -1,5 +1,5 @@
 "use server"
-import { districts, states } from "indian_address"
+import { districts, states, banks } from "indian_address"
 const API_URL = 'https://api.postalpincode.in'
 
 export async function getStates(): Promise<string[]> {
@@ -49,6 +49,62 @@ export async function getPincodeDetails(pincode: string) {
         return null
     } catch (error) {
         console.error('Error fetching pincode details:', error)
+        return null
+    }
+}
+
+export async function getBanks(searchTerm: string) {
+    try {
+        if (!searchTerm) {
+            console.warn('No search term provided for getBanks')
+            return []
+        }
+
+        searchTerm = searchTerm.toLowerCase()
+        const bankList = Object.values(banks).filter(bank => 
+            bank.toLowerCase().includes(searchTerm)
+        )
+        
+        return Object.entries(banks)
+            .filter(([key, value]) => value.toLowerCase().includes(searchTerm))
+            .map(([key, value]) => ({ code: key, name: value }))
+    } catch (error) {
+        console.error('Error fetching pincode details:', error)
+        return []
+    }
+}
+
+export async function getBankByIfsc(ifsc: string) {
+    try {
+        if (!ifsc) {
+            console.warn('No IFSC code provided for getBankByIfsc')
+            return null
+        }
+
+        const response = await fetch(`https://ifsc.razorpay.com/${ifsc}`)
+        if (!response.ok) {
+            console.error(`Error fetching bank details for IFSC: ${ifsc}, Status: ${response.status}`)
+            return null
+        }
+
+        const data = await response.json()
+        if (data && data.BANK) {
+            return {
+                bankCode: data.BANKCODE,
+                bank: data.BANK,
+                branch: data.BRANCH,
+                ifsc: data.IFSC,
+                address: data.ADDRESS,
+                city: data.CITY,
+                state: data.STATE,
+                contact: data.CONTACT
+            }
+        }
+
+        console.warn(`No details found for IFSC: ${ifsc}`)
+        return null
+    } catch (error) {
+        console.error('Error fetching bank details:', error)
         return null
     }
 }

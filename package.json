@@ -28,7 +28,7 @@
     "clsx": "^2.1.1",
     "cookies-next": "^5.1.0",
     "date-fns": "^4.1.0",
-    "indian_address": "^1.0.2",
+    "indian_address": "^1.1.3",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.503.0",
     "mongoose": "^8.13.3",
