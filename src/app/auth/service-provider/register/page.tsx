@@ -65,13 +65,13 @@ const formSchema = z.object({
 });
 
 // Add type for referral validation result
-type ReferralValidationResult =  {
-    success: boolean;
-    message?: string;
-    data?: {
-        referrerId: string;
-        referrerName: string;
-    };
+type ReferralValidationResult = {
+  success: boolean;
+  message?: string;
+  data?: {
+    referrerId: string;
+    referrerName: string;
+  };
 }
 
 export default function ProviderRegisterPage() {
@@ -133,21 +133,18 @@ export default function ProviderRegisterPage() {
       }
 
       const user = await createOrUpdateUser(JSON.parse(JSON.stringify(formattedData)))
-      if(!user)
+      if (!user)
         return toast.error("User creation failed. Please try again or contact us!.")
-      const result = await signIn("credentials", {
-        data: JSON.stringify(formattedData),
-        redirect: false,
-      });
 
-      if (result?.error) {
-        toast.error("Registration failed. Please try again.");
-      } else {
-        // Only complete referral if code exists and is validated
-        if (referralCode && referralValidation?.success) {
-          console.log("Completing referral for code:", referralCode, user?._id);
-          await completeReferral(referralCode, user?._id);
-        }
+      // Only complete referral if code exists and is validated
+      if (referralCode && referralValidation?.success) {
+        console.log("Completing referral for code:", referralCode, user?._id);
+        await completeReferral(referralCode, user?._id);
+
+        const result = await signIn("credentials", {
+          data: JSON.stringify(formattedData),
+          redirect: false,
+        });
         toast.success("Registration successful!");
         router.push("/service-provider");
       }
@@ -229,11 +226,11 @@ export default function ProviderRegisterPage() {
       toast.error("Please enter a referral code");
       return;
     }
-    
+
     try {
       const result = await validateReferralCode(code);
       setReferralValidation(result);
-      
+
       if (result.success) {
         toast.success(`Valid referral code from ${result.data?.referrerName}`);
       } else {
@@ -488,11 +485,11 @@ export default function ProviderRegisterPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <Label htmlFor="address.pincode">Pincode</Label>
-                        <Input 
-                          id="address.pincode" 
+                        <Input
+                          id="address.pincode"
                           {...form.register("address.pincode")}
                           onChange={(e) => handlePincodeChange(e.target.value)}
-                          placeholder="400001" 
+                          placeholder="400001"
                           maxLength={6}
                         />
                         {form.formState.errors["address.pincode"] && (
@@ -674,8 +671,8 @@ export default function ProviderRegisterPage() {
                             placeholder="Enter code"
                             className="uppercase"
                           />
-                          <Button 
-                            type="button" 
+                          <Button
+                            type="button"
                             variant="outline"
                             onClick={handleVerifyReferralCode}
                             disabled={isSubmitting}
@@ -724,9 +721,9 @@ export default function ProviderRegisterPage() {
                       Next
                     </Button>
                   ) : (
-                    <Button 
-                      type="submit" 
-                      className="bg-blue-600 hover:bg-blue-700" 
+                    <Button
+                      type="submit"
+                      className="bg-blue-600 hover:bg-blue-700"
                       disabled={isSubmitting}
                     >
                       {isSubmitting ? (
