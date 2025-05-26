@@ -53,6 +53,12 @@ export function ProviderModal({ provider, isOpen, onClose }) {
               <div className="flex items-center mt-1">
                 <Icons.Star className="h-4 w-4 text-yellow-400" />
                 <span className="ml-1">{provider.rating} ({provider.totalReviews} reviews)</span>
+                {provider.downline > 0 && (
+                  <Badge variant="outline" className="ml-2">
+                    <Icons.Users className="h-3 w-3 mr-1" />
+                    {provider?.downline} Downline
+                  </Badge>
+                )}
               </div>
             </div>
           </div>

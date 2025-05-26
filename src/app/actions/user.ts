@@ -6,6 +6,7 @@ import mongoose from "mongoose"
 import { Types } from 'mongoose';
 import dbConnect from '@/lib/db-connect';
 import { Booking, Review } from '@/models';
+import { updateDownlineCount } from './referral';
 
 export async function getUser({ email, role, populate = false, vars = "" }: { email: string; role: string; populate?: boolean, vars?: string }) {
   try {
@@ -13,7 +14,7 @@ export async function getUser({ email, role, populate = false, vars = "" }: { em
 
     const Model = role === "serviceProvider" ? ServiceProvider : User;
     let query = (Model as any).findOne({ email }, vars || "password name email phone profileImage address role isPhoneVerified isEmailVerified isActive createdAt updatedAt");
-    
+
     if (populate) {
       query = query.populate('profession', 'name');
     }
@@ -31,7 +32,7 @@ export async function getUser({ email, role, populate = false, vars = "" }: { em
 
     // Remove Mongoose-specific fields
     delete cleanUser.__v;
-    
+
     return JSON.parse(JSON.stringify(cleanUser));
   } catch (error) {
     console.error("Get user error:", error);
@@ -59,7 +60,7 @@ export const createOrUpdateUser = async (userData: UserData) => {
     } else {
       return JSON.parse(JSON.stringify(await Model.create(rest)));
     }
-  } catch (error:any) {
+  } catch (error: any) {
     console.error("Error creating/updating user:", error);
     return {
       success: false,
@@ -124,7 +125,7 @@ export async function getUserDashboardStats(userId: string) {
                 serviceName: { $arrayElemAt: ["$serviceDetails.name", 0] },
                 serviceIcon: { $arrayElemAt: ["$serviceDetails.icon", 0] },
                 providerName: { $arrayElemAt: ["$providerDetails.name", 0] },
-                providerImage: { 
+                providerImage: {
                   $ifNull: [
                     { $arrayElemAt: ["$providerDetails.profileImage", 0] },
                     "/placeholder.svg"
@@ -179,7 +180,7 @@ export async function getUserDashboardStats(userId: string) {
                 serviceName: { $arrayElemAt: ["$serviceDetails.name", 0] },
                 serviceIcon: { $arrayElemAt: ["$serviceDetails.icon", 0] },
                 providerName: { $arrayElemAt: ["$providerDetails.name", 0] },
-                providerImage: { 
+                providerImage: {
                   $ifNull: [
                     { $arrayElemAt: ["$providerDetails.profileImage", 0] },
                     "/placeholder.svg"
@@ -237,7 +238,7 @@ export async function updateUserProfile(data: {
     await dbConnect()
 
     const { _id, ...updateData } = data
-    
+
     const updatedUser = await User.findByIdAndUpdate(
       _id,
       {
@@ -269,6 +270,11 @@ export async function deleteUser(userId: string) {
 
     // Check if it's a service provider or regular user
     let deletedUser = await ServiceProvider.findByIdAndDelete(userId);
+    if (deletedUser && deletedUser?.deletedCount != 0) {
+      // If it's a service provider, update downline counts
+      await updateDownlineCount(userId, false);
+    }
+
     if (!deletedUser) {
       deletedUser = await User.findByIdAndDelete(userId);
     }
@@ -278,7 +284,7 @@ export async function deleteUser(userId: string) {
     }
 
     // Also delete related bookings and reviews
-    await Booking.deleteMany({ 
+    await Booking.deleteMany({
       $or: [
         { user: userId },
         { serviceProvider: userId }

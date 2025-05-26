@@ -20,6 +20,7 @@ interface ReferralNode {
   referralCode?: string
   referred?: ReferralNode[]
   referrer?: ReferralNode
+  downline?: number
 }
 
 export default function ReferralPage() {
@@ -44,18 +45,21 @@ export default function ReferralPage() {
           profileImage: result.data.me!.profileImage,
           profession: result.data.me!.profession as { _id: string; name: string },
           level: Number(result.data.me!.level),
+          downline: result.data.me?.downline || 0,
           referralCode: result.data?.currentCode?.code,
           referred: result.data?.referred?.map(ref => ({
             _id: ref._id,
             name: ref.name,
             profileImage: ref.profileImage,
             profession: ref?.profession as unknown as { _id: string; name: string },
+            downline: ref.downline || 0
           })),
           referrer: result.data.referrer ? {
             _id: result.data.referrer._id,
             name: result.data.referrer.name,
             profileImage: result.data.referrer.profileImage,
             profession: result.data.referrer.profession as unknown as { _id: string; name: string },
+            downline: result.data.referrer.downline || 0
           } : undefined
         }
         setCurrentView(newNode)
@@ -185,6 +189,12 @@ export default function ReferralPage() {
                     <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
                       Level {currentView.level || 0}
                     </span>
+
+                      <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+                        <Users className="h-3 w-3 inline mr-1" />
+                        {currentView?.downline || 0} Downline
+                      </span>
+                    
                     {currentView.referralCode && (
                       <span className="font-mono text-sm">
                         Code: {currentView.referralCode}
@@ -249,7 +259,13 @@ export default function ReferralPage() {
                       </div>
                       <div>
                         <h5 className="font-medium">{member.name}</h5>
-                        <p className="text-sm text-gray-500">{member.profession.name}</p>
+                        <p className="text-sm text-gray-500">{member?.profession?.name}</p>
+                        
+                          <p className="text-xs text-green-600">
+                            <Users className="h-3 w-3 inline mr-1" />
+                            {member?.downline || 0} Downline
+                          </p>
+                        
                       </div>
                     </div>
                     <ChevronRight className="h-5 w-5 text-gray-400" />

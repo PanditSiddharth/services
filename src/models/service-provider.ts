@@ -222,6 +222,10 @@ const serviceProviderSchema = new mongoose.Schema(
         level: {
             type: Number,
             default: 0
+        },
+        downline: {
+            type: Number,
+            default: 0
         }
     },
     {

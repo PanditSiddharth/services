@@ -30,6 +30,7 @@ import {
     MapPin,
     Clock,
     CheckCircle,
+    Users,
   } from "lucide-react"
   
   export const Icons = {
@@ -62,4 +63,5 @@ import {
     MapPin: (props: LucideProps) => <MapPin {...props} />,
     Clock: (props: LucideProps) => <Clock {...props} />,
     CheckCircle: (props: LucideProps) => <CheckCircle {...props} />,
+    Users: (props: LucideProps) => <Users {...props} />,
   }

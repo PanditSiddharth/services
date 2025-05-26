@@ -27,7 +27,7 @@ export async function validateReferralCode(code: string): Promise<{
         success: false,
         message: "Invalid or expired referral code"
       }
-      
+
     } else if (new Date().getTime() - new Date(referral.createdAt).getTime() > 35 * 24 * 60 * 60 * 1000) {
       // check if user has crossed 35 days since creation, they can't refer
       return {
@@ -132,6 +132,25 @@ export async function generateReferralToken(providerId: string, customCode?: str
   }
 }
 
+export async function updateDownlineCount(userId: string, isIncrement: boolean = true, depth = 0, maxDepth = 10) {
+  if (depth >= maxDepth) return;
+
+  const user = await ServiceProvider.findById(userId)
+    .select('referrer')
+    .populate('referrer', '_id');
+
+  if (!user?.referrer) return;
+
+  // Update downline count for the referrer
+  await ServiceProvider.findByIdAndUpdate(
+    user.referrer._id,
+    { $inc: { downline: isIncrement ? 1 : -1 } }
+  );
+
+  // Recursively update upline
+  await updateDownlineCount(user.referrer._id.toString(), isIncrement, depth + 1, maxDepth);
+}
+
 async function updateLevel(userId: string, depth = 0, maxDepth = 10): Promise<boolean | undefined> {
   try {
     if (depth >= maxDepth) return true;
@@ -139,23 +158,16 @@ async function updateLevel(userId: string, depth = 0, maxDepth = 10): Promise<bo
     const user = await ServiceProvider.findById(userId)
       .select('level referrer')
       .populate('referrer', 'level');
-    // {
-    //   level,
-    //   referrer: {
-    //     _id,
-    //     level
-    //   }
-    // }
 
     if (!user) return false;
-    if (!user.referrer) return true; // No referrer, no need to update
+    if (!user.referrer) return true;
 
     if (user.level > 10) {
-      // Reset the user level if it exceeds 10
-      await ServiceProvider.findByIdAndUpdate(userId, { level: 0, referrer: null, referred: [] });
+      // Reset the user level and update downline counts
+      await ServiceProvider.findByIdAndUpdate(userId, { level: 0, referrer: null, downline: 0, referred: [] });
       return true
     }
-    // Calculate new level based on referrer's level
+
     const referrerLevel = user.referrer?.level || 0;
     const currentLevel = user.level || 0;
 
@@ -186,7 +198,7 @@ export async function completeReferral(referralCode: string, newUserId: string):
     await ServiceProvider.updateOne(
       { _id: referral?.data?.referrerId },
       {
-        $push: { referred: newUserId } // Push newUserId into the referred array
+        $push: { referred: newUserId }
       }
     )
 
@@ -194,10 +206,13 @@ export async function completeReferral(referralCode: string, newUserId: string):
       referrer: referral?.data?.referrerId
     })
 
-    // because now it will be 3 users refered so we will update level of referrer users
-    if (referral?.data?.referred?.length == 2)
-      // Update levels starting from the new user
+    // Update downline counts first
+    await updateDownlineCount(newUserId, true);
+
+    // Update levels if needed (e.g., if the referrer has 2 referred users + 1 then update)
+    if (referral?.data?.referred?.length == 2) {
       await updateLevel(newUserId);
+    }
 
     return { success: true }
   } catch (error) {
@@ -227,7 +242,8 @@ interface BasicUser {
   _id: string
   name: string
   profileImage?: string
-  profession: string
+  profession: string,
+  downline?: number
 };
 
 interface ReferralStats {
@@ -250,7 +266,7 @@ interface ReferralStats {
     currentCode?: {
       code: string
       link: string
-    }
+    },
   }
 };
 
@@ -261,10 +277,10 @@ export const getReferralStats = async (providerId: string): Promise<ReferralStat
     const sp: any = await ServiceProvider.findOne(
       { _id: providerId }
     )
-      .select('_id name level profileImage profession referralCode referred referrer')
+      .select('_id name level profileImage profession referralCode referred referrer downline')
       .populate({
         path: 'referred',
-        select: '_id name profileImage profession',
+        select: '_id name profileImage profession downline',
         populate: { path: 'profession', select: '_id name' }
       })
       .populate({
@@ -281,7 +297,7 @@ export const getReferralStats = async (providerId: string): Promise<ReferralStat
         message: "Provider not found"
       }
     }
-
+console.log("Referral stats fetched for provider:", sp)
     const formatted: ReferralStats["data"] = {
       me: {
         _id: sp._id.toString(),
@@ -289,18 +305,21 @@ export const getReferralStats = async (providerId: string): Promise<ReferralStat
         level: sp?.level,
         profileImage: sp?.profileImage,
         profession: sp.profession,
+        downline: sp.downline || 0,
       },
       referrer: sp.referrer ? {
         _id: sp.referrer._id.toString(),
         name: sp.referrer.name,
         profileImage: sp.referrer.profileImage,
         profession: sp.referrer.profession,
+        downline: sp.referrer?.downline || 0,
       } : undefined,
       referred: sp.referred?.map(ref => ({
         _id: ref._id.toString(),
         name: ref.name,
         profileImage: ref.profileImage,
         profession: ref.profession,
+        downline: ref?.downline || 0,
       })) || [],
       currentCode: sp.referralCode ? {
         code: sp.referralCode,
