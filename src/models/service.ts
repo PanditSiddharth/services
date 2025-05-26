@@ -17,7 +17,6 @@ export interface ServiceType {
   image: string;
   isActive: boolean;
   subServices: SubServiceType[];
-  providers?: string[] | any[];
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -68,12 +67,6 @@ const serviceSchema = new mongoose.Schema(
           enum: ["hour", "day", "job"],
           default: "hour",
         },
-      },
-    ],
-    providers: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "ServiceProvider",
       },
     ],
     createdAt: {

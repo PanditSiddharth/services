@@ -1,8 +1,8 @@
 "use server"
 
 import { connectDB } from "@/lib/seeder"
-import { ServiceProvider, User } from "@/models"
-import mongoose from "mongoose"
+import { Service, ServiceProvider, User } from "@/models"
+import mongoose from "mongoose";
 import { Types } from 'mongoose';
 import dbConnect from '@/lib/db-connect';
 import { Booking, Review } from '@/models';
@@ -268,38 +268,48 @@ export async function deleteUser(userId: string) {
   try {
     await dbConnect();
 
-    // Check if it's a service provider or regular user
-    let deletedUser = await ServiceProvider.findByIdAndDelete(userId);
-    if (deletedUser && deletedUser?.deletedCount != 0) {
-      // If it's a service provider, update downline counts
-      await updateDownlineCount(userId, false);
+    // Check if it's a service provider
+    const isProvider = await ServiceProvider.findById(userId).populate('referrer');
+    
+    if (isProvider) {
+      // First update downline counts before deletion
+      if (isProvider.referrer) {
+        console.log('Updating downline count before deletion for:', userId);
+        await updateDownlineCount(userId, false);
+        
+        // Remove from referrer's referred list
+        await ServiceProvider.findByIdAndUpdate(
+          isProvider.referrer,
+          { $pull: { referred: userId } }
+        );
+      }
+
+      // Now delete the provider
+      await ServiceProvider.findByIdAndDelete(userId);
+    } else {
+      // Try deleting regular user
+      const deletedUser = await User.findByIdAndDelete(userId);
+      if (!deletedUser) {
+        return { success: false, message: 'User not found' };
+      }
     }
 
-    if (!deletedUser) {
-      deletedUser = await User.findByIdAndDelete(userId);
-    }
+    // Delete related bookings and reviews
+    await Promise.all([
+      Booking.deleteMany({
+        $or: [{ user: userId }, { serviceProvider: userId }]
+      }),
+      Review.deleteMany({
+        $or: [{ user: userId }, { serviceProvider: userId }]
+      })
+    ]);
 
-    if (!deletedUser) {
-      throw new Error('User not found');
-    }
-
-    // Also delete related bookings and reviews
-    await Booking.deleteMany({
-      $or: [
-        { user: userId },
-        { serviceProvider: userId }
-      ]
-    });
-    await Review.deleteMany({
-      $or: [
-        { user: userId },
-        { serviceProvider: userId }
-      ]
-    });
-
-    return true;
+    return { success: true, message: 'User and related data deleted successfully' };
   } catch (error) {
     console.error('Error deleting user:', error);
-    throw error;
+    return { 
+      success: false, 
+      message: error instanceof Error ? error.message : 'Failed to delete user' 
+    };
   }
 }

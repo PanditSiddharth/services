@@ -133,22 +133,35 @@ export async function generateReferralToken(providerId: string, customCode?: str
 }
 
 export async function updateDownlineCount(userId: string, isIncrement: boolean = true, depth = 0, maxDepth = 10) {
-  if (depth >= maxDepth) return;
+  try {
+    if (depth >= maxDepth) return;
 
-  const user = await ServiceProvider.findById(userId)
-    .select('referrer')
-    .populate('referrer', '_id');
+    const user = await ServiceProvider.findById(userId)
+      .select('referrer')
+      .populate('referrer', '_id');
 
-  if (!user?.referrer) return;
+    if (!user?.referrer) {
+      console.log(`No referrer found for user: ${userId}`);
+      return;
+    }
 
-  // Update downline count for the referrer
-  await ServiceProvider.findByIdAndUpdate(
-    user.referrer._id,
-    { $inc: { downline: isIncrement ? 1 : -1 } }
-  );
+    console.log(`Updating downline for referrer: ${user.referrer._id}, isIncrement: ${isIncrement}, current depth: ${depth}`);
 
-  // Recursively update upline
-  await updateDownlineCount(user.referrer._id.toString(), isIncrement, depth + 1, maxDepth);
+    // Update downline count for the referrer
+    const updated = await ServiceProvider.findByIdAndUpdate(
+      user.referrer._id,
+      { $inc: { downline: isIncrement ? 1 : -1 } },
+      { new: true }
+    );
+
+    console.log(`Updated downline count for ${user.referrer._id}: ${updated?.downline}`);
+
+    // Recursively update upline
+    await updateDownlineCount(user.referrer._id.toString(), isIncrement, depth + 1, maxDepth);
+  } catch (error) {
+    console.error('Error in updateDownlineCount:', error);
+    throw error; // Re-throw to handle in calling function
+  }
 }
 
 async function updateLevel(userId: string, depth = 0, maxDepth = 10): Promise<boolean | undefined> {
@@ -297,7 +310,6 @@ export const getReferralStats = async (providerId: string): Promise<ReferralStat
         message: "Provider not found"
       }
     }
-console.log("Referral stats fetched for provider:", sp)
     const formatted: ReferralStats["data"] = {
       me: {
         _id: sp._id.toString(),
