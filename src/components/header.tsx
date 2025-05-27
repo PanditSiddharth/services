@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, User, Settings, LogOut, ChevronDown } from "lucide-react";
+import { Menu, X, User, Settings, LogOut, ChevronDown, Home, Grid, Info, Mail, LogIn, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { LogoutButton } from "@/components/logout-button";
@@ -167,7 +167,7 @@ export function Header() {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem>
                     <button 
-                      onClick={e=> signOut()}
+                      onClick={(e: any)=> signOut()}
                       className="w-full flex items-center"
                     >
                       <LogOut className="mr-2 h-4 w-4" />
@@ -196,38 +196,38 @@ export function Header() {
               <Link
                 href="/"
                 onClick={closeMenu}
-                className={`text-sm font-medium ${
+                className={`text-sm font-medium flex items-center ${
                   pathname === "/" ? "text-primary" : "text-gray-600 hover:text-primary"
                 }`}
               >
-                Home
+                <Home className="mr-2 h-4 w-4" /> Home
               </Link>
               <Link
                 href="/services"
                 onClick={closeMenu}
-                className={`text-sm font-medium ${
+                className={`text-sm font-medium flex items-center ${
                   pathname === "/services" ? "text-primary" : "text-gray-600 hover:text-primary"
                 }`}
               >
-                Services
+                <Grid className="mr-2 h-4 w-4" /> Services
               </Link>
               <Link
                 href="/about"
                 onClick={closeMenu}
-                className={`text-sm font-medium ${
+                className={`text-sm font-medium flex items-center ${
                   pathname === "/about" ? "text-primary" : "text-gray-600 hover:text-primary"
                 }`}
               >
-                About
+                <Info className="mr-2 h-4 w-4" /> About
               </Link>
               <Link
                 href="/contact"
                 onClick={closeMenu}
-                className={`text-sm font-medium ${
+                className={`text-sm font-medium flex items-center ${
                   pathname === "/contact" ? "text-primary" : "text-gray-600 hover:text-primary"
                 }`}
               >
-                Contact
+                <Mail className="mr-2 h-4 w-4" /> Contact
               </Link>
 
               {session?.user?.email ? (
@@ -259,24 +259,30 @@ export function Header() {
                   >
                     Settings
                   </Link>
-                  <LogoutButton className="justify-start px-0" variant="ghost" />
+                    <button 
+                      onClick={(e: any)=> signOut()}
+                      className="w-full flex items-center"
+                    >
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Log out</span>
+                    </button>
                 </>
               ) : (
                 <div className="space-y-3 pt-2">
                   <div className="text-sm font-medium text-gray-500 pb-2">Customer</div>
                   <Link 
                     href="/auth/customer/login" 
-                    className="block py-2 px-3 rounded-md text-sm font-medium text-gray-600 hover:text-primary hover:bg-gray-50"
+                    className="block py-2 px-3 rounded-md text-sm font-medium text-gray-600 hover:text-primary hover:bg-gray-50 flex items-center"
                     onClick={closeMenu}
                   >
-                    Login
+                    <LogIn className="mr-2 h-4 w-4" /> Login
                   </Link>
                   <Link 
                     href="/auth/customer/register"
-                    className="block py-2 px-3 rounded-md text-sm font-medium text-gray-600 hover:text-primary hover:bg-gray-50"
+                    className="block py-2 px-3 rounded-md text-sm font-medium text-gray-600 hover:text-primary hover:bg-gray-50 flex items-center"
                     onClick={closeMenu}
                   >
-                    Register
+                    <UserPlus className="mr-2 h-4 w-4" /> Register
                   </Link>
                   
                   <div className="border-t my-2"></div>
@@ -284,17 +290,17 @@ export function Header() {
                   <div className="text-sm font-medium text-gray-500 py-2">Service Provider</div>
                   <Link 
                     href="/auth/service-provider/login"
-                    className="block py-2 px-3 rounded-md text-sm font-medium text-gray-600 hover:text-primary hover:bg-gray-50"
+                    className="block py-2 px-3 rounded-md text-sm font-medium text-gray-600 hover:text-primary hover:bg-gray-50 flex items-center"
                     onClick={closeMenu}
                   >
-                    Login
+                    <LogIn className="mr-2 h-4 w-4" /> Login
                   </Link>
                   <Link 
                     href="/auth/service-provider/register"
-                    className="block py-2 px-3 rounded-md text-sm font-medium text-gray-600 hover:text-primary hover:bg-gray-50"
+                    className="block py-2 px-3 rounded-md text-sm font-medium text-gray-600 hover:text-primary hover:bg-gray-50 flex items-center"
                     onClick={closeMenu}
                   >
-                    Register
+                    <UserPlus className="mr-2 h-4 w-4" /> Register
                   </Link>
                 </div>
               )}

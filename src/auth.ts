@@ -16,13 +16,13 @@ declare module "next-auth" {
 
   interface Session {
     user: {
-      _id?: string
-      name?: string | null
-      email?: string | null
-      image?: string | null
-      role?: string
-      profileImage?: string
-      phone?: string
+      _id?: string;
+      name?: string;
+      email?: string;
+      phone?: number;
+      image?: string;
+      role?: string;
+      profileImage?: string;
     } & DefaultSession["user"]
   }
 }
@@ -78,8 +78,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async jwt({ token, trigger, session, user }) {
       try {
         if (trigger === "signIn") {
+
           const existingUser = await getUser({
-            email: (user as any).email,
+            email: user?.email as string,
+            phone: (user as any)?.phone as number,
             role: (user as any).role,
             populate: false
           });

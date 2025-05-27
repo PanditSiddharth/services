@@ -26,7 +26,7 @@ export default {
                         ...credentials, ...data
                     }
                     // console.log("credentials", credentials);
-                } else if(credentials?.email) {
+                } else if(credentials?.email || credentials?.phone) {
                     // console.log("credentials", credentials);
                     credentials = {
                         ...credentials

@@ -8,12 +8,25 @@ import dbConnect from '@/lib/db-connect';
 import { Booking, Review } from '@/models';
 import { updateDownlineCount } from './referral';
 
-export async function getUser({ email, role, populate = false, vars = "" }: { email: string; role: string; populate?: boolean, vars?: string }) {
+export async function getUser({ email, phone, role, populate = false, vars = "" }: { email?: string; role: string; phone?: number; populate?: boolean, vars?: string }) {
   try {
     await connectDB();
+    if (!email && !phone) {
+      throw new Error("Either email or phone must be provided");
+    }
+    if (!role) {
+      throw new Error("Role must be specified");
+    }
+    const q: any = {};
 
+    if (email) {
+      q.email = email;
+    }
+    if (phone) {
+      q.phone = phone;
+    }
     const Model = role === "serviceProvider" ? ServiceProvider : User;
-    let query = (Model as any).findOne({ email }, vars || "password name email phone profileImage address role isPhoneVerified isEmailVerified isActive createdAt updatedAt");
+    let query = (Model as any).findOne(q, vars || "password name email phone profileImage address role isPhoneVerified isEmailVerified isActive createdAt updatedAt");
 
     if (populate) {
       query = query.populate('profession', 'name');

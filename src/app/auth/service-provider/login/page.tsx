@@ -12,53 +12,26 @@ import { toast } from "react-toastify"
 import { Button } from "@/components/ui/button"
 import { Form } from "@/components/ui/form"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MyField } from "@/components/my-field"
 import { signIn } from "next-auth/react"
 
 const loginSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email address" }),
+  identifier: z.string().min(1, { message: "Email or Mobile is required" }),
   password: z.string().min(1, { message: "Password is required" }),
   rememberMe: z.boolean().optional(),
-})
-
-const phoneSchema = z.object({
-  phone: z.string().regex(/^(\+\d{1,3}[- ]?)?\d{10}$/, { message: "Please enter a valid phone number" }),
-})
-
-const otpSchema = z.object({
-  phone: z.string().regex(/^(\+\d{1,3}[- ]?)?\d{10}$/, { message: "Please enter a valid phone number" }),
-  otp: z.string().length(6, { message: "OTP must be 6 digits" }),
 })
 
 export default function ServiceProviderLogin() {
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
-  const [phoneNumber, setPhoneNumber] = useState("");
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "",
+      identifier: "",
       password: "",
       rememberMe: false,
-    },
-  })
-
-  const phoneForm = useForm<z.infer<typeof phoneSchema>>({
-    resolver: zodResolver(phoneSchema),
-    defaultValues: {
-      phone: "",
-    },
-  })
-
-  const otpForm = useForm<z.infer<typeof otpSchema>>({
-    resolver: zodResolver(otpSchema),
-    defaultValues: {
-      phone: "",
-      otp: "",
     },
   })
 
@@ -66,8 +39,11 @@ export default function ServiceProviderLogin() {
     setIsSubmitting(true);
 
     try {
+      // Check if identifier is email or mobile
+      const isEmail = values.identifier.includes('@');
+      
       signIn("credentials", {
-        email: values.email,
+        [isEmail ? 'email' : 'phone']: values.identifier,
         password: values.password,
         role: "serviceProvider",
         redirect: false
@@ -87,159 +63,72 @@ export default function ServiceProviderLogin() {
     }
   }
 
-  const handleSendOTP = async (values: z.infer<typeof phoneSchema>) => {
-    setIsSubmitting(true)
-
-    try {
-      const formData = new FormData()
-      formData.append("phone", values.phone)
-
-      // const result = await sendOTP(formData)
-
-      // if (result.success) {
-      //   toast.success(result.message)
-      //   setOtpSent(true)
-      //   setPhoneNumber(values.phone)
-      //   otpForm.setValue("phone", values.phone)
-      // } else {
-      //   toast.error(result.message)
-      // }
-    } catch (error) {
-      console.error("Send OTP error:", error)
-      toast.error("Failed to send OTP. Please try again.")
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  const handleVerifyOTP = async (values: z.infer<typeof otpSchema>) => {
-    setIsSubmitting(true)
-
-    try {
-      const formData = new FormData()
-      formData.append("phone", values.phone)
-      formData.append("otp", values.otp)
-
-      // const result = await verifyOTP(formData)
-
-      // if (result.success) {
-      //   toast.success(result.message)
-      //   router.push("/dashboard")
-      // } else {
-      //   toast.error(result.message)
-      // }
-    } catch (error) {
-      console.error("Verify OTP error:", error)
-      toast.error("OTP verification failed. Please try again.")
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
   return (
     <div className="container mx-auto py-10 px-4 md:px-6">
       <div className="max-w-md mx-auto">
         <Card className="border-none shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-t-lg">
+          <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-t-lg py-8">
             <CardTitle className="text-2xl font-bold">Service Provider Login</CardTitle>
             <CardDescription className="text-blue-100">Access your service provider account</CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
-            <Tabs defaultValue="email" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="email">Email</TabsTrigger>
-                <TabsTrigger value="phone">Phone</TabsTrigger>
-              </TabsList>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <MyField 
+                  form={form} 
+                  name="identifier" 
+                  label="Email or Mobile" 
+                  placeholder="john@example.com or 9876543210" 
+                />
+                
+                <div className="relative">
+                  <MyField
+                    form={form}
+                    name="password"
+                    label="Password"
+                    placeholder="••••••••"
+                    fields={{
+                      type: showPassword ? "text" : "password",
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-2 top-8"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    )}
+                    <span className="sr-only">{showPassword ? "Hide password" : "Show password"}</span>
+                  </Button>
+                </div>
 
-              <TabsContent value="email">
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                    <MyField form={form} name="email" label="Email Address" placeholder="john@example.com" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="remember-me"
+                      className="rounded text-blue-600 focus:ring-blue-500"
+                      {...form.register("rememberMe")}
+                    />
+                    <label htmlFor="remember-me" className="text-sm">
+                      Remember me
+                    </label>
+                  </div>
+                  <Link href="/auth/forgot-password" className="text-sm text-blue-600 hover:underline">
+                    Forgot password?
+                  </Link>
+                </div>
 
-                    <div className="relative">
-                      <MyField
-                        form={form}
-                        name="password"
-                        label="Password"
-                        placeholder="••••••••"
-                        fields={{
-                          type: showPassword ? "text" : "password",
-                        }}
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-2 top-8"
-                        onClick={() => setShowPassword(!showPassword)}
-                      >
-                        {showPassword ? (
-                          <EyeOff className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <Eye className="h-4 w-4 text-muted-foreground" />
-                        )}
-                        <span className="sr-only">{showPassword ? "Hide password" : "Show password"}</span>
-                      </Button>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          id="remember-me"
-                          className="rounded text-blue-600 focus:ring-blue-500"
-                          {...form.register("rememberMe")}
-                        />
-                        <label htmlFor="remember-me" className="text-sm">
-                          Remember me
-                        </label>
-                      </div>
-                      <Link href="/auth/forgot-password" className="text-sm text-blue-600 hover:underline">
-                        Forgot password?
-                      </Link>
-                    </div>
-
-                    <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isSubmitting}>
-                      {isSubmitting ? "Logging in..." : "Login"}
-                    </Button>
-                  </form>
-                </Form>
-              </TabsContent>
-
-              <TabsContent value="phone">
-                {!otpSent ? (
-                  <Form {...phoneForm}>
-                    <form onSubmit={phoneForm.handleSubmit(handleSendOTP)} className="space-y-4">
-                      <MyField form={phoneForm} name="phone" label="Phone Number" placeholder="9876543210" />
-
-                      <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isSubmitting}>
-                        {isSubmitting ? "Sending..." : "Send OTP"}
-                      </Button>
-                    </form>
-                  </Form>
-                ) : (
-                  <Form {...otpForm}>
-                    <form onSubmit={otpForm.handleSubmit(handleVerifyOTP)} className="space-y-4">
-                      <div className="text-sm mb-4">
-                        OTP sent to <span className="font-medium">{phoneNumber}</span>
-                      </div>
-
-                      <MyField form={otpForm} name="otp" label="Enter OTP" placeholder="123456" />
-
-                      <div className="flex justify-between">
-                        <Button type="button" variant="outline" onClick={() => setOtpSent(false)}>
-                          Change Number
-                        </Button>
-
-                        <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={isSubmitting}>
-                          {isSubmitting ? "Verifying..." : "Verify OTP"}
-                        </Button>
-                      </div>
-                    </form>
-                  </Form>
-                )}
-              </TabsContent>
-            </Tabs>
+                <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isSubmitting}>
+                  {isSubmitting ? "Logging in..." : "Login"}
+                </Button>
+              </form>
+            </Form>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4 border-t pt-6">
             <p className="text-sm text-muted-foreground">
