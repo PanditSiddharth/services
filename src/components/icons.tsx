@@ -31,6 +31,7 @@ import {
     Clock,
     CheckCircle,
     Users,
+    IndianRupee
   } from "lucide-react"
   
   export const Icons = {
@@ -64,4 +65,5 @@ import {
     Clock: (props: LucideProps) => <Clock {...props} />,
     CheckCircle: (props: LucideProps) => <CheckCircle {...props} />,
     Users: (props: LucideProps) => <Users {...props} />,
+    IndianRupee: (props: LucideProps) => <IndianRupee {...props} />
   }

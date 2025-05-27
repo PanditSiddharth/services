@@ -30,54 +30,66 @@ export default async function ServicesPage() {
           <p className="text-muted-foreground">No services available at the moment. Please check back later.</p>
         </div>
       ) : (
-        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-8 md:grid-cols-1 lg:grid-cols-2">
           {activeServices.map((service:any) => (
-            <Card key={service._id} className="overflow-hidden flex flex-col h-full">
-              <div className="relative w-full h-48">
-                <Image
-                  src={service.image || "/placeholder.svg"}
-                  alt={service.name}
-                  fill
-                  className="object-cover"
-                />
-              </div>
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <div className="bg-primary/10 p-2 rounded-md">
-                    {Icons[(service.icon || "Wrench") as keyof typeof Icons] ? (
-                      Icons[(service.icon || "Wrench") as keyof typeof Icons]({ className: "h-5 w-5" })
-                    ) : (
-                      <Icons.Wrench className="h-5 w-5" />
+            <Card key={service._id} className="overflow-hidden">
+              <div className="flex flex-col md:flex-row">
+                {/* Image Section */}
+                <div className="relative w-full md:w-1/3 h-48 md:h-full min-h-[200px]">
+                  <Image
+                    src={service.image || "/service.jpg"}
+                    alt={service.name}
+                    fill
+                    className="object-cover rounded-full mx-2"
+                  />
+                </div>
+
+                {/* Content Section */}
+                <div className="flex-1 p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="bg-primary/10 p-2 rounded-md">
+                      {Icons[(service.icon || "Wrench") as keyof typeof Icons] ? (
+                        Icons[(service.icon || "Wrench") as keyof typeof Icons]({ className: "h-5 w-5" })
+                      ) : (
+                        <Icons.Wrench className="h-5 w-5" />
+                      )}
+                    </div>
+                    <h3 className="text-xl font-bold">{service.name}</h3>
+                  </div>
+
+                  <p className="text-muted-foreground mb-4">{service.description}</p>
+                  
+                  <div className="space-y-2 mb-4">
+                    <p className="text-sm font-medium flex items-center gap-2">
+                      <Icons.CheckCircle className="h-4 w-4 text-green-500" />
+                      {service.subServices?.length || 0} service options available
+                    </p>
+                    {service.duration && (
+                      <p className="text-sm font-medium flex items-center gap-2">
+                        <Icons.Clock className="h-4 w-4 text-blue-500" />
+                        Average duration: {service.duration}
+                      </p>
+                    )}
+                    {service.startingPrice && (
+                      <p className="text-sm font-medium flex items-center gap-2">
+                        <Icons.IndianRupee className="h-4 w-4 text-yellow-500" />
+                        Starting from: ₹{service.startingPrice}
+                      </p>
                     )}
                   </div>
-                  <CardTitle>{service.name}</CardTitle>
+
+                  <div className="flex gap-3 mt-auto">
+                    <Button asChild variant="outline" className="flex-1">
+                      <Link href={`/services/${service.slug}`}>View Details</Link>
+                    </Button>
+                    <Button asChild className="flex-1">
+                      <Link href={`/providers?service=${service._id}`}>
+                        Find Providers
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
-              </CardHeader>
-              <CardContent className="flex-grow">
-                <CardDescription className="line-clamp-3">
-                  {service.description}
-                </CardDescription>
-                <div className="mt-4">
-                  <p className="text-sm font-medium">
-                    {service.subServices?.length || 0} service options available
-                  </p>
-                </div>
-              </CardContent>
-              <CardFooter className="flex gap-2">
-                <Button asChild variant="outline" className="w-1/2">
-                  <Link href={`/services/${service.slug}`}>
-                    View Details
-                  </Link>
-                </Button>
-                <Button asChild className="w-1/2">
-                  <Link 
-                    href={`/providers?service=${service._id}`}
-                    className="flex items-center justify-center"
-                  >
-                    Find Providers
-                  </Link>
-                </Button>
-              </CardFooter>
+              </div>
             </Card>
           ))}
         </div>

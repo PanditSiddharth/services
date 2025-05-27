@@ -1,10 +1,8 @@
 import NextAuth, { Session } from "next-auth";
 import auth_config from "./auth_config";
-import { userRegisterSchema } from "@/models/zod";
 import { createOrUpdateUser, getUser } from "./app/actions/user";
 import { log } from "console";
-import dbConnect from "./lib/db-connect";
-import { AnyAaaaRecord } from "dns";
+
 
 import type { DefaultSession } from "next-auth"
 
@@ -34,17 +32,6 @@ declare module "next-auth/jwt" {
   }
 }
 
-
-// Temporary implementations for missing functions
-async function checkExistingUser(email: string): Promise<any> {
-  // Simulate checking for an existing user
-  return null; // Return null to simulate no existing user
-}
-
-function userFilter(user: any): any {
-  return user; // Return the user as-is for now
-}
-
 function sanitizeMongoObject(obj: any) {
   if (!obj) return obj;
   const cleaned = JSON.parse(JSON.stringify(obj));
@@ -53,12 +40,6 @@ function sanitizeMongoObject(obj: any) {
   }
   delete cleaned.__v;
   return cleaned;
-}
-
-function getFilteredUser(user: any) {
-  if (!user) return null;
-  const { name, email, _id, profileImage, role } = user;
-  return {name, email, _id, profileImage, role}
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
@@ -86,7 +67,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             populate: false
           });
              
-
           if (existingUser) {
              console.log("existingUser", existingUser);
 
