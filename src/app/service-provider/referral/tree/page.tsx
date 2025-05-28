@@ -3,6 +3,9 @@ import { getProvidersNetwork } from '@/app/actions/referral';
 import OrgChart from '@balkangraph/orgchart.js';
 import { useSession } from 'next-auth/react';
 import { useEffect, useRef, useState } from 'react';
+import { Loader2 } from 'lucide-react';
+import Link from 'next/link';
+import { ChevronLeft } from 'lucide-react';
 
 export default function HomePage() {
   const { data: session } = useSession();
@@ -99,13 +102,33 @@ export default function HomePage() {
   }
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[90vh] bg-gradient-to-r from-green-50 to-green-100">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-green-600 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-1">
+            Loading Network Tree
+          </h3>
+          <p className="text-sm text-gray-500">
+            Please wait while we fetch your network data...
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <Orgchart 
-      nodes={chartData}
-      nodeBinding={nodeBinding} 
-    />
+    <div className="relative">
+      <Link
+        href="/service-provider/referral"
+        className="absolute top-4 left-4 z-10 flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-300 rounded-md hover:bg-green-400 transition-colors"
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </Link>
+      <Orgchart 
+        nodes={chartData}
+        nodeBinding={nodeBinding} 
+      />
+    </div>
   )
 }

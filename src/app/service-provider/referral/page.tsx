@@ -9,7 +9,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { toast } from "react-toastify"
 import { Icons } from "@/components/icons"
 import { generateReferralToken, getReferralStats, revokeReferral } from "@/app/actions/referral"
-import { ChevronLeft, Users, User, ChevronRight } from "lucide-react"
+import { ChevronLeft, Users, User, ChevronRight, Loader2 } from "lucide-react"
+import Link from "next/link"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface ReferralNode {
   _id: string
@@ -35,7 +37,7 @@ export default function ReferralPage() {
   const [revoking, setRevoking] = useState(false)
 
   const loadReferralData = async (userId: string) => {
-    setIsLoading(true)
+    setIsLoading(userId == (session?.user as any)._id)
     try {
       const result = await getReferralStats(userId)
       if (result.success && result.data) {
@@ -87,7 +89,7 @@ export default function ReferralPage() {
 
   const loadReferralStats = async () => {
     if (!session?.user) return
-    
+
     try {
       const result = await getReferralStats((session.user as any)._id)
       if (result.success && result.data) {
@@ -128,11 +130,11 @@ export default function ReferralPage() {
 
   const handleRevoke = async () => {
     if (!session?.user || !stats?.currentCode) return
-    
+
     setRevoking(true)
     try {
       const result = await revokeReferral(stats?.currentCode.code)
-      
+
       if (result.success) {
         toast.success("Referral code revoked successfully")
         loadReferralStats() // Reload stats
@@ -152,6 +154,58 @@ export default function ReferralPage() {
       loadReferralData((session.user as any)._id)
     }
   }, [session])
+
+  if (isLoading) {
+    return (
+      <div className="container max-w-4xl mx-auto py-8">
+        <div className="bg-white rounded-lg shadow p-6 space-y-6">
+          {/* Header Skeleton */}
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+
+          {/* Profile Card Skeleton */}
+          <div className="bg-blue-50 p-6 rounded-lg">
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-16 w-16 rounded-full" />
+              <div className="space-y-2">
+                <Skeleton className="h-6 w-48" />
+                <Skeleton className="h-4 w-32" />
+                <div className="flex gap-2">
+                  <Skeleton className="h-5 w-20" />
+                  <Skeleton className="h-5 w-24" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats Cards Skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-white p-4 rounded border">
+              <Skeleton className="h-4 w-24 mb-2" />
+              <Skeleton className="h-8 w-12" />
+            </div>
+            <div className="bg-white p-4 rounded border">
+              <Skeleton className="h-4 w-24 mb-2" />
+              <Skeleton className="h-8 w-12" />
+            </div>
+          </div>
+
+          {/* Referral Code Section Skeleton */}
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <div className="flex justify-between items-center mb-4">
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-9 w-28" />
+            </div>
+            <div className="bg-white p-4 rounded">
+              <Skeleton className="h-8 w-full max-w-[200px]" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container max-w-4xl mx-auto py-8">
@@ -189,12 +243,13 @@ export default function ReferralPage() {
                     <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
                       Level {currentView.level || 0}
                     </span>
-
+                    <Link href="/service-provider/referral/tree">
                       <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
                         <Users className="h-3 w-3 inline mr-1" />
                         {currentView?.downline || 0} Downline
                       </span>
-                    
+                    </Link>
+
                     {currentView.referralCode && (
                       <span className="font-mono text-sm">
                         Code: {currentView.referralCode}
@@ -213,7 +268,7 @@ export default function ReferralPage() {
                 <User className="h-4 w-4" />
                 Referred By
               </h4>
-              <div 
+              <div
                 className="p-4 bg-gray-50 rounded-lg flex items-center justify-between cursor-pointer hover:bg-gray-100"
                 onClick={() => handleViewMember(currentView.referrer!)}
               >
@@ -244,7 +299,7 @@ export default function ReferralPage() {
               </h4>
               <div className="space-y-2">
                 {currentView?.referred.map((member) => (
-                  <div 
+                  <div
                     key={member._id}
                     className="p-4 bg-gray-50 rounded-lg flex items-center justify-between cursor-pointer hover:bg-gray-100"
                     onClick={() => handleViewMember(member)}
@@ -260,12 +315,12 @@ export default function ReferralPage() {
                       <div>
                         <h5 className="font-medium">{member.name}</h5>
                         <p className="text-sm text-gray-500">{member?.profession?.name}</p>
-                        
-                          <p className="text-xs text-green-600">
-                            <Users className="h-3 w-3 inline mr-1" />
-                            {member?.downline || 0} Downline
-                          </p>
-                        
+
+                        <p className="text-xs text-green-600">
+                          <Users className="h-3 w-3 inline mr-1" />
+                          {member?.downline || 0} Downline
+                        </p>
+
                       </div>
                     </div>
                     <ChevronRight className="h-5 w-5 text-gray-400" />
@@ -291,7 +346,7 @@ export default function ReferralPage() {
                   </div>
                 </CardContent>
               </Card>
-              
+
               <Card>
                 <CardHeader className="py-4">
                   <CardTitle className="text-sm font-medium text-gray-500">
