@@ -119,7 +119,7 @@ export default function ReferralPage() {
         toast.success("Referral code generated successfully")
       }
     } catch (error) {
-      console.error("Error:", error)
+      console.error("Error:", error);
       toast.error(error instanceof Error ? error.message : "Failed to generate referral code")
     } finally {
       setIsGenerating(false)

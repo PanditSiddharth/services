@@ -348,3 +348,225 @@ export const getReferralStats = async (providerId: string): Promise<ReferralStat
     }
   }
 }
+
+interface NetworkNode {
+  id: string;
+  pid?: string;
+  name: string;
+  title: string;
+  img: string;
+  level: number;
+  totalReferrals: number;
+  joinDate: string;
+}
+
+const MAX_NETWORK_DEPTH = 5; // Configurable depth limit
+
+export async function getProviderReferralNetwork(
+  providerId: string,
+  depth: number = 3
+): Promise<{
+  success: boolean;
+  message?: string;
+  data?: NetworkNode[];
+}> {
+  try {
+    await dbConnect();
+
+    // Create dynamic populate based on depth
+    const createPopulate = (currentDepth: number): any => {
+      if (currentDepth <= 0) return null;
+      return [
+        { path: 'profession', select: 'name' },
+        {
+          path: 'referred',
+          select: '_id name profession level profileImage referred createdAt',
+          populate: createPopulate(currentDepth - 1)
+        }
+      ];
+    };
+
+    const provider = await ServiceProvider.findById(providerId)
+      .select('_id name profession level profileImage referred createdAt')
+      .populate({
+        path: 'referred',
+        select: '_id name profession level profileImage referred createdAt',
+        populate: createPopulate(depth - 1)
+      })
+      .populate('profession', 'name')
+      .lean();
+
+    if (!provider) {
+      return { success: false, message: "Provider not found" };
+    }
+
+    const nodes: NetworkNode[] = [];
+
+    function buildNodes(person: any, pid: string | null = null) {
+      if (!person?._id) return; // Skip invalid nodes
+      
+      const id = person._id.toString();
+      nodes.push({
+        id,
+        pid: pid || undefined,
+        name: person.name || "Unknown",
+        title: person.profession?.name || "Unknown",
+        img: person.profileImage || "/placeholder.svg",
+        level: person.level || 0,
+        totalReferrals: person?.downline || 0,
+        joinDate: person.createdAt
+      });
+
+      if (Array.isArray(person.referred)) {
+        person.referred.forEach((child: any) => buildNodes(child, id));
+      }
+    }
+
+    buildNodes(provider);
+
+    return {
+      success: true,
+      data: JSON.parse(JSON.stringify(nodes))
+    };
+  } catch (error) {
+    console.error("Error fetching referral network:", error);
+    return {
+      success: false,
+      message: "Failed to fetch referral network"
+    };
+  }
+}
+
+export async function getProvidersNetwork(
+  providerId: string,
+  maxDepth: number = 10
+): Promise<{
+  success: boolean;
+  message?: string;
+  data?: NetworkNode[];
+}> {
+  try {
+    await dbConnect();
+
+    const visited = new Set<string>();
+    const nodes: NetworkNode[] = [];
+    let currentLevel = [providerId];
+    let depth = 0;
+
+    while (currentLevel.length > 0 && depth < maxDepth) {
+      let nextLevel: string[] = [];
+
+      const providers:any = await ServiceProvider.find({ _id: { $in: currentLevel } })
+        .select('_id name profession level profileImage referrer referred createdAt downline')
+        .populate('profession', 'name')
+        .lean();
+
+      for (const provider of providers) {
+        if (!provider || visited.has(provider?._id.toString())) continue;
+
+        const id = provider._id.toString();
+        visited.add(id);
+
+        nodes.push({
+          id,
+          pid: provider?.referrer,
+          name: provider?.name || "Unknown",
+          title: provider?.profession?.name || "Unknown",
+          img: provider.profileImage || "/placeholder.svg",
+          level: provider.level || 0,
+          totalReferrals: provider?.downline || 0,
+          joinDate: provider.createdAt,
+        });
+
+        nextLevel = [...nextLevel, ...(provider.referred || []).map((ref: any) => ref._id.toString())];
+      }
+
+      currentLevel = nextLevel;
+      depth++;
+    }
+
+    return {
+      success: true,
+      data: JSON.parse(JSON.stringify(nodes)),
+    };
+  } catch (error) {
+    console.error("Error fetching referral network:", error);
+    return {
+      success: false,
+      message: "Failed to fetch referral network"
+    };
+  }
+}
+
+
+export async function getReferralPerformance(providerId: string): Promise<{
+  success: boolean;
+  message?: string;
+  data?: {
+    totalReferrals: number;
+    activeReferrals: number;
+    totalEarnings: number;
+    monthlyStats: {
+      month: string;
+      referrals: number;
+      earnings: number;
+    }[];
+  };
+}> {
+  try {
+    await dbConnect();
+
+    const provider: any = await ServiceProvider.findById(providerId)
+      .select('referred')
+      .populate({
+        path: 'referred',
+        select: 'isActive createdAt earnings'
+      })
+      .lean();
+
+    if (!provider) {
+      return { success: false, message: "Provider not found" };
+    }
+
+    const referrals = provider?.referred || [];
+    const totalReferrals = referrals.length;
+    const activeReferrals = referrals.filter((ref: any) => ref.isActive).length;
+    const totalEarnings = referrals.reduce((sum: number, ref: any) => sum + (ref.earnings || 0), 0);
+
+    // Generate monthly stats for last 6 months
+    const monthlyStats: any = [];
+    for (let i = 0; i < 6; i++) {
+      const date = new Date();
+      date.setMonth(date.getMonth() - i);
+      const month = date.toLocaleString('default', { month: 'short' });
+
+      const monthReferrals = referrals.filter((ref: any) => {
+        const refDate = new Date(ref.createdAt);
+        return refDate.getMonth() === date.getMonth() &&
+          refDate.getFullYear() === date.getFullYear();
+      });
+
+      monthlyStats.push({
+        month,
+        referrals: monthReferrals.length,
+        earnings: monthReferrals.reduce((sum: number, ref: any) => sum + (ref.earnings || 0), 0)
+      });
+    }
+
+    return {
+      success: true,
+      data: {
+        totalReferrals,
+        activeReferrals,
+        totalEarnings,
+        monthlyStats: monthlyStats.reverse()
+      }
+    };
+  } catch (error) {
+    console.error("Error fetching referral performance:", error);
+    return {
+      success: false,
+      message: "Failed to fetch referral performance"
+    };
+  }
+}

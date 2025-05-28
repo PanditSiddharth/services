@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@balkangraph/orgchart.js": "^8.17.6",
     "@hookform/resolvers": "^5.0.1",
     "@radix-ui/react-alert-dialog": "^1.1.11",
     "@radix-ui/react-avatar": "^1.1.9",
@@ -37,6 +38,7 @@
     "mongoose": "^8.13.3",
     "next": "15.3.1",
     "next-auth": "^5.0.0-beta.27",
+    "next-transpile-modules": "^10.0.1",
     "react": "^19.0.0",
     "react-day-picker": "^9.7.0",
     "react-dom": "^19.0.0",

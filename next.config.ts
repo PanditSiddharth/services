@@ -1,18 +1,18 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  /* config options here */
-  // allow images from any domain
+// next.config.js
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  transpilePackages: ['@balkangraph/orgchart.js'],
   images: {
     remotePatterns: [
       {
-        protocol: "https",
-        hostname: "**",
-        port: "",
-        pathname: "**",
+        protocol: 'https',
+        hostname: '**',
+        port: '',
+        pathname: '**',
       },
     ],
   },
+  swcMinify: true,
 };
 
-export default nextConfig;
+module.exports = nextConfig;
