@@ -59,7 +59,7 @@ export default function HomePage() {
           siblingSeparation: 40,
           subtreeSeparation: 80,
           padding: 30,
-          miniMap: true,
+          // miniMap: true,
           collapse: {
             level: 6,
             allChildren: true
@@ -81,8 +81,9 @@ export default function HomePage() {
       <div 
         ref={divRef} 
         style={{ 
-          height: "800px",
+          height: "90vh",
           width: "100%",
+          marginTop: "4px",
           border: "1px solid #eee",
           borderRadius: "5px",
           backgroundColor: "#bfffbf",
