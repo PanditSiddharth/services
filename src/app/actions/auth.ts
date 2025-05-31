@@ -228,7 +228,7 @@ export async function registerProvider(formData: FormData) {
     const newProvider = new ServiceProvider({
       profileImage: imageUrl,
       isVerified: false, // Providers need to be verified by admin
-      isActive: true,
+      providerStatus: "pending", // Initial status is pending
       ...data,
     })
 

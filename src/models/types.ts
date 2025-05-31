@@ -27,7 +27,7 @@ export interface ServiceProviderType {
     profession: Types.ObjectId | ServiceType, services: { service: Types.ObjectId | ServiceType, price: number, priceUnit?: PriceUnit }[],
     experience: number, address: { street?: string, city: string, state: string, pincode: string, landmark?: string },
     coordinates?: [number, number], availability?: { isAvailable?: boolean, workingDays?: WeekDay[], workingHours?: { start?: string, end?: string } },
-    professionalCertificates?: string[], isVerified?: boolean, isActive?: boolean,
+    professionalCertificates?: string[], isVerified?: boolean, providerStatus?: "active" | "inactive" | "suspended" | "pending",
     rating?: number, totalReviews?: number, totalBookings?: number, completedBookings?: number,
     bookings?: Types.ObjectId[] | BookingType[], reviews?: Types.ObjectId[] | ReviewType[],
     bankDetails?: { accountHolderName?: string, accountNumber?: string, ifscCode?: string, bankName?: string, branch?: string },

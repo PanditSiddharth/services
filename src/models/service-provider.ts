@@ -27,7 +27,7 @@ export interface ServiceProviderType {
     };
     professionalCertificates?: string[];
     isVerified: boolean;
-    isActive: boolean;
+    providerStatus: "active" | "inactive" | "suspended" | "pending";
     rating: number;
     totalReviews: number;
     totalBookings: number;
@@ -132,9 +132,10 @@ const serviceProviderSchema = new mongoose.Schema(
             type: Boolean,
             default: false,
         },
-        isActive: {
-            type: Boolean,
-            default: true,
+        providerStatus: {
+            type: String,
+            default: "pending",
+            enum: ["active", "inactive", "suspended", "pending"],
         },
         rating: {
             type: Number,

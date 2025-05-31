@@ -7,6 +7,13 @@ function serialize<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj))
 }
 
+/**
+ * Checks for 
+ *    1) Validity of referral code
+ *    2) If the referral code is not expired (35 days)
+ *    3) If already referred 3 members
+ * @param code Referral code to validate refferer
+ */
 export async function validateReferralCode(code: string): Promise<{
   success: boolean
   message?: string
@@ -132,7 +139,17 @@ export async function generateReferralToken(providerId: string, customCode?: str
   }
 }
 
-export async function updateDownlineCount(userId: string, isIncrement: boolean = true, depth = 0, maxDepth = 10) {
+export async function updateDownlineCount({
+  userId, 
+  depth = 0, 
+  maxDepth = 10,
+  howMuch = 1, // Default increment value
+}: {
+  userId: string,
+  depth?: number,
+  maxDepth?: number
+  howMuch?: number // Optional parameter to control increment/decrement
+  }) {
   try {
     if (depth >= maxDepth) return;
 
@@ -145,19 +162,23 @@ export async function updateDownlineCount(userId: string, isIncrement: boolean =
       return;
     }
 
-    console.log(`Updating downline for referrer: ${user.referrer._id}, isIncrement: ${isIncrement}, current depth: ${depth}`);
+    console.log(`Updating downline for referrer: ${user.referrer._id}, current depth: ${depth}`);
 
     // Update downline count for the referrer
     const updated = await ServiceProvider.findByIdAndUpdate(
       user.referrer._id,
-      { $inc: { downline: isIncrement ? 1 : -1 } },
+      { $inc: { downline: howMuch } },
       { new: true }
     );
 
     console.log(`Updated downline count for ${user.referrer._id}: ${updated?.downline}`);
 
     // Recursively update upline
-    await updateDownlineCount(user.referrer._id.toString(), isIncrement, depth + 1, maxDepth);
+    await updateDownlineCount({
+      userId: user.referrer._id.toString(),
+      howMuch,
+      depth: depth + 1, 
+      maxDepth});
   } catch (error) {
     console.error('Error in updateDownlineCount:', error);
     throw error; // Re-throw to handle in calling function
@@ -208,24 +229,35 @@ export async function completeReferral(referralCode: string, newUserId: string):
       return { success: false, message: "Invalid or expired referral" }
     }
 
+
     await ServiceProvider.updateOne(
       { _id: referral?.data?.referrerId },
-      {
-        $push: { referred: newUserId }
-      }
+      { $push: { referred: newUserId } }
     )
 
     await ServiceProvider.findByIdAndUpdate(newUserId, {
       referrer: referral?.data?.referrerId
     })
 
-    // Update downline counts first
-    await updateDownlineCount(newUserId, true);
-
     // Update levels if needed (e.g., if the referrer has 2 referred users + 1 then update)
     if (referral?.data?.referred?.length == 2) {
       await updateLevel(newUserId);
+          // Update downline counts first
+    await updateDownlineCount({
+      userId: newUserId, 
+      howMuch: 3
+    });
+
+    const updateres = await ServiceProvider.updateMany(
+      { _id: { $in: [...(referral?.data?.referred || []), newUserId] } },
+      { providerStatus: "active" }
+    );
+
+    if (updateres.modifiedCount === 0) {
+      return { success: false, message: "Failed to update provider status" }
     }
+    
+  }
 
     return { success: true }
   } catch (error) {
@@ -530,7 +562,7 @@ export async function getReferralPerformance(providerId: string): Promise<{
 
     const referrals = provider?.referred || [];
     const totalReferrals = referrals.length;
-    const activeReferrals = referrals.filter((ref: any) => ref.isActive).length;
+    const activeReferrals = referrals.filter((ref: any) => ref.providerStatus == "active").length;
     const totalEarnings = referrals.reduce((sum: number, ref: any) => sum + (ref.earnings || 0), 0);
 
     // Generate monthly stats for last 6 months

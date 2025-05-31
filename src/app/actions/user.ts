@@ -26,7 +26,7 @@ export async function getUser({ email, phone, role, populate = false, vars = "" 
       q.phone = phone;
     }
     const Model = role === "serviceProvider" ? ServiceProvider : User;
-    let query = (Model as any).findOne(q, vars || "password name email phone profileImage address role isPhoneVerified isEmailVerified isActive createdAt updatedAt");
+    let query = (Model as any).findOne(q, vars || "password name email phone profileImage address role isPhoneVerified isEmailVerified providerStatus createdAt updatedAt");
 
     if (populate) {
       query = query.populate('profession', 'name');
@@ -288,7 +288,7 @@ export async function deleteUser(userId: string) {
       // First update downline counts before deletion
       if (isProvider.referrer) {
         console.log('Updating downline count before deletion for:', userId);
-        await updateDownlineCount(userId, false);
+        await updateDownlineCount({userId, howMuch: -1});
         
         // Remove from referrer's referred list
         await ServiceProvider.findByIdAndUpdate(

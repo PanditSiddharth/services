@@ -170,6 +170,14 @@ const StatusBadge = ({ status }: any) => {
   );
 };
 
+const handleRestrictedFeature = () => {
+  toast.warning("Your account is pending activation. Please wait until your referrer completes their 3 referrals.");
+};
+
+const canAccessFeature = (providerStatus: string) => {
+  return providerStatus === 'active';
+};
+
 export default function ServiceProviderDashboard() {
   const { data: session } = useSession();
   interface Booking {
@@ -273,6 +281,160 @@ const user = useSession().data?.user
     }
   }
 
+  // Add this to disable clicking on restricted elements
+  const preventClickIfPending = (e: React.MouseEvent) => {
+    if (mockServiceProvider?.providerStatus !== 'active') {
+      e.preventDefault();
+      e.stopPropagation();
+      handleRestrictedFeature();
+      return false;
+    }
+    return true;
+  };
+
+  // Add this helper function to check if a link should be disabled
+  const isFeatureRestricted = (path: string) => {
+    if (mockServiceProvider?.providerStatus !== 'active') {
+      const allowedPaths = [
+        '/service-provider/settings/profile',
+        '/service-provider/password',
+        '/service-provider/overview',
+        '/service-provider/profile'
+      ];
+      return !allowedPaths.includes(path);
+    }
+    return false;
+  };
+
+  // Add this helper to check if a tab is accessible
+  const canAccessTab = (tabName: string) => {
+    if (mockServiceProvider?.providerStatus !== 'active') {
+      return ['overview', 'profile'].includes(tabName);
+    }
+    return true;
+  };
+
+  // Update the tab change handler
+  const handleTabChange = (value: string) => {
+    if (!canAccessTab(value)) {
+      handleRestrictedFeature();
+      return;
+    }
+    setActiveTab(value);
+  };
+
+  // Modify the dropdown menu items to use the restriction
+  const renderDropdownItem = (
+    icon: React.ReactNode,
+    label: string,
+    href: string,
+    onClick?: () => void
+  ) => {
+    const restricted = isFeatureRestricted(href);
+    const itemProps = restricted
+      ? {
+          onClick: (e: React.MouseEvent) => {
+            e.preventDefault();
+            handleRestrictedFeature();
+          },
+          className: "flex flex-row items-center opacity-50 cursor-not-allowed",
+        }
+      : {
+          href,
+          onClick,
+          className: "flex items-center flex-row",
+        };
+
+    return (
+      <DropdownMenuItem
+        asChild={!restricted}
+        {...itemProps}
+      >
+        {restricted ? (
+          <div>
+            {icon}
+            <span>{label}</span>
+          </div>
+        ) : (
+          <Link href={href}>
+            {icon}
+            <span>{label}</span>
+          </Link>
+        )}
+      </DropdownMenuItem>
+    );
+  };
+
+  // Modify the existing booking actions
+  const renderActionButtons = (booking: any) => {
+    if (mockServiceProvider?.providerStatus !== 'active') {
+      return (
+        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium opacity-50">
+          <button 
+            className="text-blue-600 mr-4 cursor-not-allowed"
+            onClick={preventClickIfPending}
+          >
+            View
+          </button>
+          {booking.status === "pending" && (
+            <button 
+              className="text-green-600 cursor-not-allowed"
+              onClick={preventClickIfPending}
+            >
+              Accept
+            </button>
+          )}
+        </td>
+      );
+    }
+    return (
+      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+        <button 
+          className={`text-blue-600 hover:text-blue-900 mr-4 ${
+            !canAccessFeature(mockServiceProvider?.providerStatus) ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
+          onClick={(e) => {
+            if (!canAccessFeature(mockServiceProvider?.providerStatus)) {
+              e.preventDefault();
+              handleRestrictedFeature();
+              return;
+            }
+            // Original view logic here
+          }}
+        >
+          View
+        </button>
+        {booking.status === "pending" && (
+          <button 
+            className={`text-green-600 hover:text-green-900 ${
+              !canAccessFeature(mockServiceProvider?.providerStatus) ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+            onClick={(e) => {
+              if (!canAccessFeature(mockServiceProvider?.providerStatus)) {
+                e.preventDefault();
+                handleRestrictedFeature();
+                return;
+              }
+              // Original accept logic here
+            }}
+          >
+            Accept
+          </button>
+        )}
+        {booking.status === "confirmed" && (
+          <button className="text-purple-600 hover:text-purple-900">
+            Start
+          </button>
+        )}
+        {booking.status === "in-progress" && (
+          <button className="text-green-600 hover:text-green-900">
+            Complete
+          </button>
+        )}
+      </td>
+    );
+  };
+
   return (
     !mockServiceProvider ?  <Loading /> : <div className="flex flex-col min-h-screen bg-gray-50">
       {/* Header */}
@@ -310,8 +472,11 @@ const user = useSession().data?.user
             </div>
           </div>
           <div className="flex items-center space-x-4">
-            <Badge className={mockServiceProvider?.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
-              {mockServiceProvider?.isActive ? "Active" : "Inactive"}
+            <Badge className={mockServiceProvider?.providerStatus === 'active' ? 
+    "bg-green-100 text-green-800" : 
+    "bg-yellow-100 text-yellow-800"
+  }>
+    {mockServiceProvider?.providerStatus === 'active' ? "Active" : "Pending"}
             </Badge>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -320,30 +485,28 @@ const user = useSession().data?.user
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem asChild>
-                  <Link href="/service-provider/settings" className="flex items-center">
-                    <Icons.User className="mr-2 h-4 w-4" />
-                    <span>Update Details</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/service-provider/referral" className="flex items-center">
-                    <Icons.Gift className="mr-2 h-4 w-4" />
-                    <span>Referral Program</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/service-provider/services" className="flex items-center">
-                    <Icons.List className="mr-2 h-4 w-4" />
-                    <span>Manage Services</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/service-provider/password" className="flex items-center">
-                    <Icons.Lock className="mr-2 h-4 w-4" />
-                    <span>Change Password</span>
-                  </Link>
-                </DropdownMenuItem>
+                {renderDropdownItem(<span>
+                  <Icons.User className="mr-2 h-4 w-4" />
+                  Update Details,
+                </span>,
+                "",
+                  "/service-provider/settings"
+                )}
+                {renderDropdownItem(
+                  <Icons.Gift className="mr-2 h-4 w-4" />,
+                  "Referral Program",
+                  "/service-provider/referral"
+                )}
+                {renderDropdownItem(
+                  <Icons.List className="mr-2 h-4 w-4" />,
+                  "Manage Services",
+                  "/service-provider/services"
+                )}
+                {renderDropdownItem(
+                  <Icons.Lock className="mr-2 h-4 w-4" />,
+                  "Change Password",
+                  "/service-provider/password"
+                )}
                 <DropdownMenuItem 
                   className="text-red-600 focus:text-red-600"
                   onClick={handleDeleteAccount}
@@ -364,13 +527,52 @@ const user = useSession().data?.user
         </div>
       </header>
 
+      {/* Warning Banner */}
+      {mockServiceProvider?.providerStatus !== 'active' && (
+        <div className="bg-yellow-50 border-b border-yellow-200">
+          <div className="max-w-7xl mx-auto py-3 px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between flex-wrap">
+              <div className="flex items-center">
+                <span className="flex p-2 rounded-lg bg-yellow-100">
+                  <Icons.AlertTriangle className="h-6 w-6 text-yellow-800" />
+                </span>
+                <p className="ml-3 font-medium text-yellow-800">
+                  <span className="hidden md:inline">
+                    Your account features are currently restricted. These will be activated once your referrer completes their 3 referrals. Until then, you can only access Overview and Profile sections.
+                  </span>
+                  <span className="inline md:hidden">
+                    Account features restricted. Waiting for referrers completion.
+                  </span>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main content */}
       <main className="flex-grow max-w-7xl w-full mx-auto px-4 py-6 sm:px-6 lg:px-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs 
+          value={activeTab} 
+          onValueChange={handleTabChange} 
+          className="w-full"
+        >
           <TabsList className="mb-8">
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="bookings">Bookings</TabsTrigger>
-            <TabsTrigger value="reviews">Reviews</TabsTrigger>
+            <TabsTrigger 
+              value="bookings" 
+              disabled={!canAccessTab('bookings')}
+              className={!canAccessTab('bookings') ? 'cursor-not-allowed opacity-50' : ''}
+            >
+              Bookings
+            </TabsTrigger>
+            <TabsTrigger 
+              value="reviews"
+              disabled={!canAccessTab('reviews')}
+              className={!canAccessTab('reviews') ? 'cursor-not-allowed opacity-50' : ''}
+            >
+              Reviews
+            </TabsTrigger>
             <TabsTrigger value="profile">Profile</TabsTrigger>
           </TabsList>
 
@@ -579,7 +781,10 @@ const user = useSession().data?.user
           </TabsContent>
 
           {/* Bookings Tab */}
-          <TabsContent value="bookings" className="space-y-6">
+          <TabsContent 
+            value="bookings" 
+            className={!canAccessTab('bookings') ? 'pointer-events-none opacity-50' : ''}
+          >
             <Card>
               <CardHeader>
                 <CardTitle>All Bookings</CardTitle>
@@ -650,26 +855,7 @@ const user = useSession().data?.user
                           <td className="px-6 py-4 whitespace-nowrap">
                             <StatusBadge status={booking.status} />
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <button className="text-blue-600 hover:text-blue-900 mr-4">
-                              View
-                            </button>
-                            {booking.status === "pending" && (
-                              <button className="text-green-600 hover:text-green-900">
-                                Accept
-                              </button>
-                            )}
-                            {booking.status === "confirmed" && (
-                              <button className="text-purple-600 hover:text-purple-900">
-                                Start
-                              </button>
-                            )}
-                            {booking.status === "in-progress" && (
-                              <button className="text-green-600 hover:text-green-900">
-                                Complete
-                              </button>
-                            )}
-                          </td>
+                          {renderActionButtons(booking)}
                         </tr>
                       ))}
                     </tbody>
@@ -680,7 +866,10 @@ const user = useSession().data?.user
           </TabsContent>
 
           {/* Reviews Tab */}
-          <TabsContent value="reviews" className="space-y-6">
+          <TabsContent 
+            value="reviews" 
+            className={!canAccessTab('reviews') ? 'pointer-events-none opacity-50' : ''}
+          >
             <Card>
               <CardHeader>
                 <CardTitle>Customer Reviews</CardTitle>
@@ -688,7 +877,7 @@ const user = useSession().data?.user
                   Your average rating: {mockServiceProvider?.rating}/5 from {mockServiceProvider?.totalReviews} reviews
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className={mockServiceProvider?.providerStatus !== 'active' ? 'pointer-events-none opacity-50' : ''}>
                 <div className="space-y-6">
                   {mockReviews.map((review) => (
                     <div key={review._id} className="border-b pb-4 last:border-b-0">

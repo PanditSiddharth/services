@@ -12,11 +12,10 @@ export default function HomePage() {
   const [chartData, setChartData] = useState<any>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Moved API call to parent component
+  // Fetch data only when session and user ID are available
   useEffect(() => {
     if (!session?.user?._id) return;
     
-    // Fetch data only once when component mounts
     const fetchData = async () => {
       try {
         setIsLoading(true);
@@ -42,7 +41,7 @@ export default function HomePage() {
     };
 
     fetchData();
-  }, [session?.user?._id]); // Only depend on user ID
+  }, [session?.user?._id]);
 
   function Orgchart(props) {
     const divRef = useRef<HTMLDivElement>(null);
@@ -52,7 +51,6 @@ export default function HomePage() {
       if (divRef.current) {
         const newChart = new OrgChart(divRef.current, {
           template: "diva",
-          enableSearch: false,
           nodeBinding: props.nodeBinding,
           nodes: props.nodes,
           layout: OrgChart.tree,
@@ -60,19 +58,20 @@ export default function HomePage() {
           mouseScrool: OrgChart.action.zoom,
           levelSeparation: 100,
           siblingSeparation: 40,
-          subtreeSeparation: 80,
+          subtreeSeparation: 40,
           padding: 30,
-          // miniMap: true,
+          // searchFields: ["name", "title"],
+          // searchDisplayField: "name",
+            enableSearch: false,  // Enable search functionality
           collapse: {
             level: 6,
             allChildren: true
           },
-          // nodeMenu: null,
         });
         setChart(newChart);
       }
 
-      // Cleanup function
+      // Cleanup the chart instance when the component unmounts or updates
       return () => {
         if (chart) {
           chart.destroy();
@@ -99,7 +98,7 @@ export default function HomePage() {
     field_0: "name",
     img_0: "img",
     field_1: "title",
-  }
+  };
 
   if (isLoading) {
     return (
@@ -130,5 +129,5 @@ export default function HomePage() {
         nodeBinding={nodeBinding} 
       />
     </div>
-  )
+  );
 }

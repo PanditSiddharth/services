@@ -32,7 +32,7 @@ interface ServiceProviderProps {
     }
   }
   isVerified: boolean
-  isActive: boolean
+  providerStatus: "active" | "inactive" | "suspended" | "pending"
   rating: number
   totalReviews: number
   totalBookings: number
@@ -76,7 +76,7 @@ export function ProviderCard({ provider, onBook, onViewDetails }: {
                   Verified
                 </Badge>
               )}
-              {provider.availability?.isAvailable && provider.isActive && (
+              {provider.availability?.isAvailable && provider.providerStatus == "active" && (
                 <Badge className="bg-green-500 text-white border-0 h-5">
                   Available
                 </Badge>
@@ -121,9 +121,9 @@ export function ProviderCard({ provider, onBook, onViewDetails }: {
           <Button
             className="flex-1"
             onClick={() => setShowBooking(true)}
-            disabled={!provider.availability?.isAvailable || !provider.isActive}
+            disabled={!provider.availability?.isAvailable || provider.providerStatus !== "active"}
           >
-            {provider.availability?.isAvailable && provider.isActive 
+            {provider.availability?.isAvailable && ["inactive", "pending"].includes(provider.providerStatus) 
               ? "Book Now" 
               : "Unavailable"}
           </Button>
