@@ -156,7 +156,7 @@ export default function ProviderRegisterPage() {
           redirect: false,
         });
         toast.success("Registration successful!");
-        // router.push("/service-provider");
+        router.push("/service-provider");
     } catch (error) {
       console.error("Registration error:", error)
       toast.error("An error occurred. Please try again.")

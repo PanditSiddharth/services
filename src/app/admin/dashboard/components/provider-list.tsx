@@ -52,7 +52,7 @@ export function ProviderList({ initialProviders, initialHasMore }: ProviderListP
   }
 
   const getStatusBadge = (provider: ServiceProviderType) => {
-    if (!provider.isActive) return { label: "suspended", variant: "destructive" }
+    if (provider?.providerStatus != "active") return { label: "suspended", variant: "destructive" }
     if (!provider.isVerified) return { label: "pending", variant: "warning" }
     return { label: "active", variant: "success" }
   }
